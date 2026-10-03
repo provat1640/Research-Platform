@@ -44,4 +44,14 @@ class ResearchProject extends Model
     {
         return $this->hasMany(DocumentVersion::class);
     }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(ProjectTask::class);
+    }
+
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(ProjectFeedback::class);
+    }
 }

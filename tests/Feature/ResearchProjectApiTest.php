@@ -66,4 +66,37 @@ class ResearchProjectApiTest extends TestCase
             'version_number' => 1,
         ]);
     }
+
+    public function test_project_tasks_and_feedback_can_be_created_and_resolved(): void
+    {
+        $student = User::factory()->create(['name' => 'Mira Sen']);
+        $project = ResearchProject::create([
+            'owner_id' => $student->id,
+            'title' => 'Reviewable Thesis',
+        ]);
+        $project->members()->attach($student->id, ['role' => 'student']);
+
+        $taskResponse = $this->actingAs($student)->postJson("/api/v1/projects/{$project->id}/tasks", [
+            'title' => 'Clarify the research question',
+            'priority' => 'high',
+        ]);
+
+        $taskResponse->assertCreated()->assertJsonPath('data.status', 'todo');
+        $taskId = $taskResponse->json('data.id');
+
+        $this->patchJson("/api/v1/tasks/{$taskId}", ['status' => 'done'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'done');
+
+        $feedbackResponse = $this->actingAs($student)->postJson("/api/v1/projects/{$project->id}/feedback", [
+            'body' => 'Please support this claim with one more source.',
+        ]);
+
+        $feedbackResponse->assertCreated()->assertJsonPath('data.status', 'open');
+        $feedbackId = $feedbackResponse->json('data.id');
+
+        $this->patchJson("/api/v1/feedback/{$feedbackId}", ['status' => 'resolved'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'resolved');
+    }
 }
