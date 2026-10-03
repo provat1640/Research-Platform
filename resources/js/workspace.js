@@ -8,6 +8,8 @@ const taskList = document.querySelector('#task-list');
 const feedbackList = document.querySelector('#feedback-list');
 const aiSummaryButton = document.querySelector('#ai-summary');
 const aiResult = document.querySelector('#ai-result');
+const setupForm = document.querySelector('#setup-form');
+const setupState = document.querySelector('#setup-state');
 
 if (window.subscribeToProject) {
     window.subscribeToProject(projectId, (payload) => {
@@ -31,6 +33,12 @@ const loadWorkspace = async () => {
     document.querySelector('#task-count').textContent = tasks.filter((task) => task.status !== 'done').length;
     feedbackList.innerHTML = feedback.length ? feedback.map((item) => `<div class="feedback-item ${item.status === 'resolved' ? 'is-resolved' : ''}"><strong>${item.author.name}</strong><p>${item.body}</p><button class="text-button" data-feedback-id="${item.id}" type="button">${item.status === 'resolved' ? 'Resolved' : 'Mark resolved'}</button></div>`).join('') : '<div class="loading-line">No feedback yet.</div>';
     document.querySelector('#feedback-count').textContent = feedback.filter((item) => item.status === 'open').length;
+    if (setupForm) {
+        setupForm.elements.research_question.value = data.research_question || '';
+        setupForm.elements.methodology.value = data.methodology || '';
+        setupForm.elements.expected_outcome.value = data.expected_outcome || '';
+        setupForm.elements.ethics_status.value = data.ethics_status || 'not_assessed';
+    }
 };
 
 document.querySelectorAll('[data-command]').forEach((button) => button.addEventListener('click', () => { editor.focus(); document.execCommand(button.dataset.command); }));
@@ -52,6 +60,13 @@ document.querySelector('#feedback-form').addEventListener('submit', async (event
     event.preventDefault();
     await fetch(`/api/v1/projects/${projectId}/feedback`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify(Object.fromEntries(new FormData(event.target))) });
     event.target.reset(); await loadWorkspace();
+});
+
+setupForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setupState.textContent = 'Saving…';
+    const response = await fetch(`/api/v1/projects/${projectId}/setup`, { method: 'PATCH', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify(Object.fromEntries(new FormData(setupForm))) });
+    setupState.textContent = response.ok ? 'Saved' : 'Could not save';
 });
 
 document.addEventListener('click', async (event) => {

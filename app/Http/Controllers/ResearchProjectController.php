@@ -59,6 +59,10 @@ class ResearchProjectController extends Controller
         return response()->json(['data' => [
             ...$this->projectPayload($project),
             'description' => $project->description,
+            'research_question' => $project->research_question,
+            'methodology' => $project->methodology,
+            'expected_outcome' => $project->expected_outcome,
+            'ethics_status' => $project->ethics_status,
             'members' => $project->members->map(fn (User $member): array => [
                 'id' => $member->id,
                 'name' => $member->name,
@@ -66,6 +70,20 @@ class ResearchProjectController extends Controller
             ])->values(),
             'latest_version' => $project->documentVersions->first()?->only(['id', 'content', 'version_number', 'created_at']),
         ]]);
+    }
+
+    public function updateSetup(Request $request, ResearchProject $project): JsonResponse
+    {
+        $validated = $request->validate([
+            'research_question' => ['nullable', 'string', 'max:2000'],
+            'methodology' => ['nullable', 'string', 'max:120'],
+            'expected_outcome' => ['nullable', 'string', 'max:2000'],
+            'ethics_status' => ['required', 'in:not_assessed,not_required,submitted,approved'],
+        ]);
+
+        $project->update($validated);
+
+        return response()->json(['data' => $project->fresh()]);
     }
 
     public function storeVersion(Request $request, ResearchProject $project): JsonResponse

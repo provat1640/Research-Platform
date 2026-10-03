@@ -20,6 +20,10 @@ class ResearchProject extends Model
         'status',
         'progress',
         'last_activity_at',
+        'research_question',
+        'methodology',
+        'expected_outcome',
+        'ethics_status',
     ];
 
     protected function casts(): array

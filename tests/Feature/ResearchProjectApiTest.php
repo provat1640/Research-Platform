@@ -41,6 +41,40 @@ class ResearchProjectApiTest extends TestCase
         $this->actingAs($outsider)->patchJson("/api/v1/feedback/{$feedback->id}", ['status' => 'resolved'])->assertForbidden();
     }
 
+    public function test_project_research_setup_can_be_saved(): void
+    {
+        $student = User::factory()->create();
+        $project = ResearchProject::create(['owner_id' => $student->id, 'title' => 'Methodology Study']);
+        $project->members()->attach($student->id, ['role' => 'student']);
+
+        $this->actingAs($student)
+            ->patchJson("/api/v1/projects/{$project->id}/setup", [
+                'research_question' => 'How do feedback loops change thesis quality?',
+                'methodology' => 'Mixed methods',
+                'expected_outcome' => 'A validated collaboration model.',
+                'ethics_status' => 'submitted',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.methodology', 'Mixed methods')
+            ->assertJsonPath('data.ethics_status', 'submitted');
+    }
+
+    public function test_integration_health_never_returns_provider_credentials(): void
+    {
+        $user = User::factory()->create();
+        config()->set('services.ai.base_url', 'https://ai.example.test/v1');
+        config()->set('services.ai.model', 'research-model');
+        config()->set('services.supabase.url', null);
+        config()->set('services.supabase.key', null);
+        Http::fake(['https://ai.example.test/v1/models' => Http::response(['data' => []])]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/integrations/health')
+            ->assertOk()
+            ->assertJsonPath('data.ai.status', 'ready')
+            ->assertJsonMissing(['key' => 'research-model']);
+    }
+
     public function test_projects_can_be_created_and_listed(): void
     {
         $user = User::factory()->create(['name' => 'Dr. Mira Sen']);
