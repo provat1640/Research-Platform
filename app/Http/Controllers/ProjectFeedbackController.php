@@ -34,6 +34,17 @@ class ProjectFeedbackController extends Controller
 
     public function update(Request $request, ProjectFeedback $feedback): JsonResponse
     {
+        $feedback->load('project');
+        $user = $request->user();
+
+        abort_unless(
+            $user && ($feedback->author_id === $user->id
+                || $feedback->project->owner_id === $user->id
+                || $feedback->project->members()->whereKey($user->id)->exists()),
+            403,
+            'You are not a member of this research project.'
+        );
+
         $validated = $request->validate(['status' => ['required', 'in:open,resolved']]);
         $feedback->update($validated);
 

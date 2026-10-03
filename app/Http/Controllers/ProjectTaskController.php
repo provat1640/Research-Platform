@@ -35,6 +35,17 @@ class ProjectTaskController extends Controller
 
     public function update(Request $request, ProjectTask $task): JsonResponse
     {
+        $task->load('project');
+        $user = $request->user();
+
+        abort_unless(
+            $user && ($task->created_by === $user->id
+                || $task->project->owner_id === $user->id
+                || $task->project->members()->whereKey($user->id)->exists()),
+            403,
+            'You are not a member of this research project.'
+        );
+
         $validated = $request->validate(['status' => ['required', 'in:todo,in_progress,done']]);
         $task->update($validated);
 

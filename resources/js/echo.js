@@ -12,3 +12,7 @@ window.Echo = new Echo({
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
 });
+
+window.subscribeToProject = (projectId, onVersionCreated) => {
+    return window.Echo.private(`projects.${projectId}`).listen('.document.version.created', onVersionCreated);
+};

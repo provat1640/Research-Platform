@@ -54,4 +54,9 @@ class ResearchProject extends Model
     {
         return $this->hasMany(ProjectFeedback::class);
     }
+
+    public function papers(): HasMany
+    {
+        return $this->hasMany(Paper::class);
+    }
 }

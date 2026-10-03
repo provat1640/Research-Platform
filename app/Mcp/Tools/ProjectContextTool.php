@@ -19,7 +19,7 @@ class ProjectContextTool extends Tool
         ]);
 
         $project = ResearchProject::query()
-            ->with(['owner:id,name', 'members:id,name', 'tasks', 'feedback'])
+            ->with(['owner:id,name', 'members:id,name', 'tasks', 'feedback', 'papers:id,research_project_id,title,status'])
             ->findOrFail($validated['project_id']);
 
         return Response::json([
@@ -38,6 +38,10 @@ class ProjectContextTool extends Tool
             ])->values()->all(),
             'open_tasks' => $project->tasks->where('status', '!=', 'done')->map(fn ($task): string => $task->title)->values()->all(),
             'open_feedback' => $project->feedback->where('status', 'open')->map(fn ($feedback): string => $feedback->body)->values()->all(),
+            'papers' => $project->papers->map(fn ($paper): array => [
+                'title' => $paper->title,
+                'status' => $paper->status,
+            ])->values()->all(),
         ]);
     }
 

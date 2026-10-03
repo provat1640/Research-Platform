@@ -6,6 +6,7 @@ use App\Models\ResearchProject;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -20,10 +21,15 @@ class DatabaseSeeder extends Seeder
 
         $student = User::query()->updateOrCreate(['email' => 'test@example.com'], [
             'name' => 'Test User',
+            'password' => Hash::make('password'),
+            'trial_ends_at' => now()->addDays(7),
+            'is_teacher' => false,
         ]);
 
         $teacher = User::query()->updateOrCreate(['email' => 'alex@example.com'], [
             'name' => 'Dr. Alex Kim',
+            'password' => Hash::make('password'),
+            'is_teacher' => true,
         ]);
 
         $projects = [

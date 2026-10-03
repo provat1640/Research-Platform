@@ -6,7 +6,7 @@ use App\Models\ResearchProject;
 use App\Services\AiGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use RuntimeException;
+use Throwable;
 
 class AiController extends Controller
 {
@@ -16,7 +16,7 @@ class AiController extends Controller
             'instruction' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $project->load(['members:id,name', 'tasks', 'feedback']);
+        $project->load(['members:id,name', 'tasks', 'feedback', 'papers:id,research_project_id,title,abstract,status']);
 
         try {
             $result = $ai->chat([
@@ -35,11 +35,16 @@ class AiController extends Controller
                             'progress' => $project->progress,
                             'open_tasks' => $project->tasks->where('status', '!=', 'done')->pluck('title')->values(),
                             'open_feedback' => $project->feedback->where('status', 'open')->pluck('body')->values(),
+                            'papers' => $project->papers->map(fn ($paper): array => [
+                                'title' => $paper->title,
+                                'abstract' => $paper->abstract,
+                                'status' => $paper->status,
+                            ])->values(),
                         ],
                     ], JSON_THROW_ON_ERROR),
                 ],
             ]);
-        } catch (RuntimeException $exception) {
+        } catch (Throwable $exception) {
             return response()->json(['message' => $exception->getMessage()], 503);
         }
 

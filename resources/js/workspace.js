@@ -9,6 +9,13 @@ const feedbackList = document.querySelector('#feedback-list');
 const aiSummaryButton = document.querySelector('#ai-summary');
 const aiResult = document.querySelector('#ai-result');
 
+if (window.subscribeToProject) {
+    window.subscribeToProject(projectId, (payload) => {
+        versionLabel.textContent = `Version ${payload.version_number}`;
+        saveState.textContent = 'A collaborator saved a new version';
+    });
+}
+
 const loadWorkspace = async () => {
     const [projectResponse, taskResponse, feedbackResponse] = await Promise.all([
         fetch(`/api/v1/projects/${projectId}`, { headers: { Accept: 'application/json' } }),

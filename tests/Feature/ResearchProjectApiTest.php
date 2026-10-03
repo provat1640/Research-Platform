@@ -13,6 +13,34 @@ class ResearchProjectApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_project_api_requires_authentication(): void
+    {
+        $this->getJson('/api/v1/projects')->assertUnauthorized();
+    }
+
+    public function test_non_member_cannot_read_a_project(): void
+    {
+        $owner = User::factory()->create();
+        $outsider = User::factory()->create();
+        $project = ResearchProject::create(['owner_id' => $owner->id, 'title' => 'Private Thesis']);
+
+        $this->actingAs($outsider)
+            ->getJson("/api/v1/projects/{$project->id}")
+            ->assertForbidden();
+    }
+
+    public function test_non_member_cannot_update_project_task_or_feedback(): void
+    {
+        $owner = User::factory()->create();
+        $outsider = User::factory()->create();
+        $project = ResearchProject::create(['owner_id' => $owner->id, 'title' => 'Protected Thesis']);
+        $task = $project->tasks()->create(['title' => 'Private task', 'created_by' => $owner->id]);
+        $feedback = $project->feedback()->create(['body' => 'Private feedback', 'author_id' => $owner->id]);
+
+        $this->actingAs($outsider)->patchJson("/api/v1/tasks/{$task->id}", ['status' => 'done'])->assertForbidden();
+        $this->actingAs($outsider)->patchJson("/api/v1/feedback/{$feedback->id}", ['status' => 'resolved'])->assertForbidden();
+    }
+
     public function test_projects_can_be_created_and_listed(): void
     {
         $user = User::factory()->create(['name' => 'Dr. Mira Sen']);
@@ -27,7 +55,7 @@ class ResearchProjectApiTest extends TestCase
             ->assertJsonPath('data.title', 'Adaptive Learning in Distributed Teams')
             ->assertJsonPath('data.member_count', 1);
 
-        $this->getJson('/api/v1/projects')
+        $this->actingAs($user)->getJson('/api/v1/projects')
             ->assertOk()
             ->assertJsonPath('data.0.owner', 'Dr. Mira Sen');
 
@@ -50,7 +78,7 @@ class ResearchProjectApiTest extends TestCase
             $teacher->id => ['role' => 'teacher'],
         ]);
 
-        $this->getJson("/api/v1/projects/{$project->id}")
+        $this->actingAs($student)->getJson("/api/v1/projects/{$project->id}")
             ->assertOk()
             ->assertJsonCount(2, 'data.members')
             ->assertJsonPath('data.members.1.role', 'teacher');
@@ -86,7 +114,7 @@ class ResearchProjectApiTest extends TestCase
         $taskResponse->assertCreated()->assertJsonPath('data.status', 'todo');
         $taskId = $taskResponse->json('data.id');
 
-        $this->patchJson("/api/v1/tasks/{$taskId}", ['status' => 'done'])
+        $this->actingAs($student)->patchJson("/api/v1/tasks/{$taskId}", ['status' => 'done'])
             ->assertOk()
             ->assertJsonPath('data.status', 'done');
 
@@ -97,14 +125,14 @@ class ResearchProjectApiTest extends TestCase
         $feedbackResponse->assertCreated()->assertJsonPath('data.status', 'open');
         $feedbackId = $feedbackResponse->json('data.id');
 
-        $this->patchJson("/api/v1/feedback/{$feedbackId}", ['status' => 'resolved'])
+        $this->actingAs($student)->patchJson("/api/v1/feedback/{$feedbackId}", ['status' => 'resolved'])
             ->assertOk()
             ->assertJsonPath('data.status', 'resolved');
     }
 
     public function test_project_summary_uses_configured_openai_compatible_gateway(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['trial_ends_at' => now()->addDay()]);
         $project = ResearchProject::create([
             'owner_id' => $user->id,
             'title' => 'AI Assisted Thesis',
@@ -133,7 +161,7 @@ class ResearchProjectApiTest extends TestCase
 
     public function test_project_summary_fails_cleanly_when_ai_gateway_is_not_configured(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['trial_ends_at' => now()->addDay()]);
         $project = ResearchProject::create(['owner_id' => $user->id, 'title' => 'Offline Thesis']);
         config()->set('services.ai.base_url', null);
         config()->set('services.ai.model', null);
@@ -160,5 +188,24 @@ class ResearchProjectApiTest extends TestCase
         $this->assertSame([['id' => 5, 'title' => 'Created Thesis']], $client->insert('research_projects', ['title' => 'Created Thesis']));
 
         Http::assertSentCount(2);
+    }
+
+    public function test_papers_reject_duplicate_abstracts_and_create_unique_manuscripts(): void
+    {
+        $user = User::factory()->create();
+        $project = ResearchProject::create(['owner_id' => $user->id, 'title' => 'Paper Project']);
+        $abstract = str_repeat('This study evaluates collaborative thesis research methods. ', 3);
+
+        $this->actingAs($user)->postJson("/api/v1/projects/{$project->id}/papers", [
+            'title' => 'First Manuscript',
+            'abstract' => $abstract,
+        ])->assertCreated()->assertJsonPath('data.status', 'draft');
+
+        $this->actingAs($user)->postJson("/api/v1/projects/{$project->id}/papers", [
+            'title' => 'Duplicate Manuscript',
+            'abstract' => $abstract,
+        ])->assertStatus(422)->assertJsonPath('status', 'rejected');
+
+        $this->assertDatabaseCount('papers', 1);
     }
 }

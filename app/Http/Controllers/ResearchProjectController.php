@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\DocumentVersionCreated;
 use App\Models\ResearchProject;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -83,6 +84,7 @@ class ResearchProjectController extends Controller
         ])->load('author:id,name');
 
         $project->update(['last_activity_at' => now()]);
+        DocumentVersionCreated::dispatch($version);
 
         return response()->json(['data' => [
             'id' => $version->id,
