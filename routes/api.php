@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\ProjectFeedbackController;
 use App\Http\Controllers\ProjectTaskController;
 use App\Http\Controllers\ResearchProjectController;
@@ -16,4 +17,5 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/projects/{project}/feedback', [ProjectFeedbackController::class, 'index']);
     Route::post('/projects/{project}/feedback', [ProjectFeedbackController::class, 'store']);
     Route::patch('/feedback/{feedback}', [ProjectFeedbackController::class, 'update']);
+    Route::post('/projects/{project}/ai/summary', [AiController::class, 'summarize']);
 });

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\ResearchProject;
 use App\Models\User;
+use App\Services\SupabaseClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ResearchProjectApiTest extends TestCase
@@ -98,5 +100,65 @@ class ResearchProjectApiTest extends TestCase
         $this->patchJson("/api/v1/feedback/{$feedbackId}", ['status' => 'resolved'])
             ->assertOk()
             ->assertJsonPath('data.status', 'resolved');
+    }
+
+    public function test_project_summary_uses_configured_openai_compatible_gateway(): void
+    {
+        $user = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $user->id,
+            'title' => 'AI Assisted Thesis',
+        ]);
+
+        config()->set('services.ai.base_url', 'https://ai.example.test/v1');
+        config()->set('services.ai.model', 'free-research-model');
+
+        Http::fake([
+            'https://ai.example.test/v1/chat/completions' => Http::response([
+                'model' => 'free-research-model',
+                'choices' => [['message' => ['content' => 'Next action: refine the research question.']]],
+            ]),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/ai/summary", [])
+            ->assertOk()
+            ->assertJsonPath('data.model', 'free-research-model')
+            ->assertJsonPath('data.content', 'Next action: refine the research question.');
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://ai.example.test/v1/chat/completions'
+            && $request['model'] === 'free-research-model'
+            && str_contains($request['messages'][1]['content'], 'AI Assisted Thesis'));
+    }
+
+    public function test_project_summary_fails_cleanly_when_ai_gateway_is_not_configured(): void
+    {
+        $user = User::factory()->create();
+        $project = ResearchProject::create(['owner_id' => $user->id, 'title' => 'Offline Thesis']);
+        config()->set('services.ai.base_url', null);
+        config()->set('services.ai.model', null);
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/projects/{$project->id}/ai/summary", [])
+            ->assertServiceUnavailable();
+    }
+
+    public function test_supabase_client_reads_and_inserts_through_rest_api(): void
+    {
+        config()->set('services.supabase.url', 'https://example.supabase.co');
+        config()->set('services.supabase.key', 'service-key');
+
+        Http::fake([
+            'https://example.supabase.co/rest/v1/research_projects*' => Http::sequence()
+                ->push([['id' => 4, 'title' => 'Synced Thesis']])
+                ->push([['id' => 5, 'title' => 'Created Thesis']]),
+        ]);
+
+        $client = app(SupabaseClient::class);
+
+        $this->assertSame([['id' => 4, 'title' => 'Synced Thesis']], $client->select('research_projects'));
+        $this->assertSame([['id' => 5, 'title' => 'Created Thesis']], $client->insert('research_projects', ['title' => 'Created Thesis']));
+
+        Http::assertSentCount(2);
     }
 }

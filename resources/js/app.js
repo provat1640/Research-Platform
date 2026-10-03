@@ -18,6 +18,8 @@ const projectCard = (project) => `
 	<a class="project-card" href="/projects/${project.id}"><div class="project-top"><div><h3>${project.title}</h3><p class="discipline">${project.discipline || 'Independent research'}</p></div><span class="project-status">${project.status.replace('_', ' ')}</span></div><div class="progress-label"><span>Project progress</span><strong>${project.progress}%</strong></div><div class="progress-track"><div class="progress-bar" style="width: ${project.progress}%"></div></div><div class="project-footer"><div class="member-stack"><span>MS</span>${project.member_count > 1 ? '<span>+ ' + (project.member_count - 1) + '</span>' : ''}</div><span>${project.last_activity || 'Just created'}</span></div></a>`;
 
 const loadProjects = async () => {
+	if (!projectList || !projectCount) return;
+
 	const response = await fetch('/api/v1/projects', { headers: { Accept: 'application/json' } });
 	if (!response.ok) throw new Error('Unable to load projects');
 	const { data } = await response.json();

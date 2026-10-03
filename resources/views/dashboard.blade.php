@@ -12,6 +12,7 @@
             <aside class="sidebar">
                 <a class="brand" href="{{ route('dashboard') }}"><span class="brand-mark">C</span><span><strong>Co-Auth</strong><small>research studio</small></span></a>
                 <nav class="primary-nav" aria-label="Primary navigation"><a class="nav-item is-active" href="{{ route('dashboard') }}"><span>◒</span>Overview</a><a class="nav-item" href="#projects"><span>□</span>My projects</a><a class="nav-item" href="#activity"><span>↗</span>Activity</a></nav>
+                                <nav class="primary-nav" aria-label="Primary navigation"><a class="nav-item is-active" href="{{ route('dashboard') }}"><span>◒</span>Overview</a><a class="nav-item" href="#projects"><span>□</span>My projects</a><a class="nav-item" href="{{ route('tasks.index') }}"><span>✓</span>Task board</a><a class="nav-item" href="{{ route('feedback.index') }}"><span>↗</span>Feedback desk</a></nav>
                 <div class="sidebar-foot"><div class="status-dot"><span></span>Workspace online</div><p>Build a clearer thesis, together.</p></div>
             </aside>
             <main class="main-content">

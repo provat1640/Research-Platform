@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    'supabase' => [
+        'url' => env('SUPABASE_URL'),
+        'key' => env('SUPABASE_SERVICE_KEY'),
+        'timeout' => env('SUPABASE_TIMEOUT', 10),
+    ],
+
+    'ai' => [
+        'base_url' => env('AI_BASE_URL', 'http://127.0.0.1:11434/v1'),
+        'key' => env('AI_API_KEY'),
+        'model' => env('AI_MODEL', 'llama3.2'),
+        'timeout' => env('AI_TIMEOUT', 30),
+        'temperature' => env('AI_TEMPERATURE', 0.2),
+    ],
+
+    'mcp' => [
+        'access_token' => env('MCP_ACCESS_TOKEN'),
+    ],
+
 ];
