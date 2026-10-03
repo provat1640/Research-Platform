@@ -55,4 +55,30 @@ class AiController extends Controller
             ],
         ]);
     }
+
+    public function evaluate(Request $request, ResearchProject $project, AiGateway $ai): JsonResponse
+    {
+        $validated = $request->validate([
+            'instruction' => ['required', 'string', 'max:1000'],
+            'test_data' => ['required', 'array', 'max:50'],
+        ]);
+
+        try {
+            $result = $ai->chat([
+                ['role' => 'system', 'content' => 'You are a rigorous research test evaluator. Evaluate only the supplied test data. Do not fabricate results, citations, or claims. Return JSON with pass, score, findings, and next_actions.'],
+                ['role' => 'user', 'content' => json_encode([
+                    'project' => $project->title,
+                    'instruction' => $validated['instruction'],
+                    'test_data' => $validated['test_data'],
+                ], JSON_THROW_ON_ERROR)],
+            ]);
+        } catch (Throwable $exception) {
+            return response()->json(['message' => 'The research assistant is unavailable right now.'], 503);
+        }
+
+        return response()->json(['data' => [
+            'model' => $result['model'] ?? config('services.ai.model'),
+            'content' => data_get($result, 'choices.0.message.content'),
+        ]]);
+    }
 }

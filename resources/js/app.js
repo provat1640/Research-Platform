@@ -45,9 +45,33 @@ document.querySelectorAll('[data-open-project-form]').forEach((button) => button
 projectForm?.addEventListener('submit', async (event) => {
 	event.preventDefault();
 	formError.textContent = '';
-	const response = await fetch('/api/v1/projects', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify(Object.fromEntries(new FormData(projectForm))) });
-	if (!response.ok) { formError.textContent = 'Please check the project details and try again.'; return; }
-	projectForm.reset(); projectDialog.close(); await loadProjects();
+	const submitButton = projectForm.querySelector('button[type="submit"]');
+	if (submitButton) submitButton.disabled = true;
+
+	try {
+		const response = await fetch('/api/v1/projects', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' }, body: JSON.stringify(Object.fromEntries(new FormData(projectForm))) });
+		const contentType = response.headers.get('content-type') || '';
+		const payload = contentType.includes('application/json') ? await response.json() : null;
+
+		if (!response.ok) {
+			if (response.status === 401 || response.redirected) {
+				formError.textContent = 'Your session has expired. Sign in again to create a project.';
+				return;
+			}
+
+			const validationMessage = payload?.errors ? Object.values(payload.errors).flat()[0] : payload?.message;
+			formError.textContent = validationMessage || 'The project could not be saved. Please try again.';
+			return;
+		}
+
+		projectForm.reset();
+		projectDialog.close();
+		await loadProjects();
+	} catch (error) {
+		formError.textContent = 'The server could not be reached. Check the connection and try again.';
+	} finally {
+		if (submitButton) submitButton.disabled = false;
+	}
 });
 
 loadProjects().catch(() => { projectList.innerHTML = '<div class="empty-state">The workspace is getting ready. Run the migrations to connect your research spaces.</div>'; });

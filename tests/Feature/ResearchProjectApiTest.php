@@ -13,6 +13,41 @@ class ResearchProjectApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_registration_requires_a_valid_orcid_id(): void
+    {
+        $this->post('/register', [
+            'name' => 'New Researcher',
+            'email' => 'researcher@example.com',
+            'orcid_id' => 'not-an-orcid',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertSessionHasErrors('orcid_id');
+
+        $this->post('/register', [
+            'name' => 'New Researcher',
+            'email' => 'researcher@example.com',
+            'orcid_id' => '0000-0002-1825-0097',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertRedirect('/dashboard');
+
+        $this->assertDatabaseHas('users', ['orcid_id' => '0000-0002-1825-0097']);
+    }
+
+    public function test_login_rejects_an_account_without_orcid_identity(): void
+    {
+        User::factory()->create([
+            'email' => 'missing-orcid@example.com',
+            'password' => 'password123',
+            'orcid_id' => null,
+        ]);
+
+        $this->from('/login')->post('/login', [
+            'email' => 'missing-orcid@example.com',
+            'password' => 'password123',
+        ])->assertRedirect('/login')->assertSessionHasErrors('email');
+    }
+
     public function test_project_api_requires_authentication(): void
     {
         $this->getJson('/api/v1/projects')->assertUnauthorized();
@@ -203,6 +238,23 @@ class ResearchProjectApiTest extends TestCase
         $this->actingAs($user)
             ->postJson("/api/v1/projects/{$project->id}/ai/summary", [])
             ->assertServiceUnavailable();
+    }
+
+    public function test_llm_evaluation_accepts_structured_test_data(): void
+    {
+        $user = User::factory()->create(['trial_ends_at' => now()->addDay()]);
+        $project = ResearchProject::create(['owner_id' => $user->id, 'title' => 'Testable Research']);
+        config()->set('services.ai.base_url', 'https://ai.example.test/v1');
+        config()->set('services.ai.model', 'free-research-model');
+        Http::fake(['https://ai.example.test/v1/chat/completions' => Http::response([
+            'model' => 'free-research-model',
+            'choices' => [['message' => ['content' => '{"pass":true,"score":0.9}']]],
+        ])]);
+
+        $this->actingAs($user)->postJson("/api/v1/projects/{$project->id}/ai/evaluate", [
+            'instruction' => 'Check whether the sample output matches the expected result.',
+            'test_data' => [['input' => '2 + 2', 'expected' => 4, 'actual' => 4]],
+        ])->assertOk()->assertJsonPath('data.model', 'free-research-model');
     }
 
     public function test_supabase_client_reads_and_inserts_through_rest_api(): void
