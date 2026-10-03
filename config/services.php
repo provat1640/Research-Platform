@@ -39,6 +39,7 @@ return [
         'url' => env('SUPABASE_URL'),
         'key' => env('SUPABASE_SERVICE_KEY'),
         'timeout' => env('SUPABASE_TIMEOUT', 10),
+        'connect_timeout' => env('SUPABASE_CONNECT_TIMEOUT', 3),
     ],
 
     'ai' => [
@@ -46,6 +47,7 @@ return [
         'key' => env('AI_API_KEY'),
         'model' => env('AI_MODEL', 'llama3.2'),
         'timeout' => env('AI_TIMEOUT', 30),
+        'connect_timeout' => env('AI_CONNECT_TIMEOUT', 5),
         'temperature' => env('AI_TEMPERATURE', 0.2),
     ],
 

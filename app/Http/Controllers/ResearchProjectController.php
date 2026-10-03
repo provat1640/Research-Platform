@@ -10,9 +10,17 @@ use Illuminate\Http\Request;
 
 class ResearchProjectController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         $projects = ResearchProject::query()
+            ->when($user, function ($query, $user) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('owner_id', $user->id)
+                        ->orWhereHas('members', fn ($memberQuery) => $memberQuery->where('users.id', $user->id));
+                });
+            })
             ->with('owner:id,name')
             ->withCount('members')
             ->latest('last_activity_at')

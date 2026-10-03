@@ -6,6 +6,7 @@ use App\Models\ResearchProject;
 use App\Services\AiGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class AiController extends Controller
@@ -45,7 +46,9 @@ class AiController extends Controller
                 ],
             ]);
         } catch (Throwable $exception) {
-            return response()->json(['message' => $exception->getMessage()], 503);
+            Log::warning('AI summary service unavailable: '.$exception->getMessage());
+
+            return response()->json(['message' => 'The research assistant is unavailable right now.'], 503);
         }
 
         return response()->json([

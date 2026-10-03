@@ -11,12 +11,26 @@
         <div class="app-shell">
             <aside class="sidebar">
                 <a class="brand" href="{{ route('dashboard') }}"><span class="brand-mark">C</span><span><strong>Co-Auth</strong><small>research studio</small></span></a>
-                <nav class="primary-nav" aria-label="Primary navigation"><a class="nav-item is-active" href="{{ route('dashboard') }}"><span>◒</span>Overview</a><a class="nav-item" href="#projects"><span>□</span>My projects</a><a class="nav-item" href="{{ route('tasks.index') }}"><span>✓</span>Task board</a><a class="nav-item" href="{{ route('feedback.index') }}"><span>↗</span>Feedback desk</a></nav>
-                <div class="sidebar-foot"><div class="status-dot"><span></span>Workspace online</div><p>Build a clearer thesis, together.</p></div>
+                @include('partials.navigation')
+                <div class="sidebar-foot">
+                    <div class="status-dot"><span></span>Workspace online</div>
+                    <p>Build a clearer thesis, together.</p>
+                    <form method="POST" action="{{ route('logout') }}" style="margin-top: 0.75rem;">
+                        @csrf
+                        <button type="submit" class="text-button" style="color: var(--muted, #71717a); font-size: 0.8125rem; cursor: pointer; background: none; border: none; padding: 0;">Sign out</button>
+                    </form>
+                </div>
             </aside>
             <main class="main-content">
-                <header class="topbar"><div class="breadcrumbs"><span>Workspace</span><b>/</b><strong>Overview</strong></div><div class="profile-chip"><span class="avatar avatar-teal">MS</span><span><strong>Mira Sen</strong><small>Student researcher</small></span><span class="chevron">⌄</span></div></header>
-                <section class="welcome-row"><div><p class="eyebrow">Friday, 03 October 2026</p><h1>Good morning, Mira<span>.</span></h1><p class="lede">Your research spaces, shared notes, and feedback in one calm place.</p></div><button class="button button-primary" type="button" data-open-project-form>＋ New project</button></section>
+                @php
+                    $currentUser = Auth::user();
+                    $userName = $currentUser?->name ?? 'Researcher';
+                    $userFirstName = explode(' ', $userName)[0] ?? 'Researcher';
+                    $userInitials = collect(explode(' ', $userName))->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->join('') ?: 'RS';
+                    $userRole = ($currentUser?->is_teacher ?? false) ? 'Supervisor' : 'Student researcher';
+                @endphp
+                <header class="topbar"><div class="breadcrumbs"><span>Workspace</span><b>/</b><strong>Overview</strong></div><div class="profile-chip"><span class="avatar avatar-teal">{{ $userInitials }}</span><span><strong>{{ $userName }}</strong><small>{{ $userRole }}</small></span><span class="chevron">⌄</span></div></header>
+                <section class="welcome-row"><div><p class="eyebrow">{{ now()->format('l, d F Y') }}</p><h1>Welcome back, {{ $userFirstName }}<span>.</span></h1><p class="lede">Your research spaces, shared notes, and feedback in one calm place.</p></div><button class="button button-primary" type="button" data-open-project-form>＋ New project</button></section>
                 <section class="metric-grid" aria-label="Workspace summary"><div class="metric"><span class="metric-icon amber">◈</span><div><strong id="project-count">0</strong><small>Active projects</small></div><em>+1 this month</em></div><div class="metric"><span class="metric-icon coral">↗</span><div><strong>12</strong><small>Open feedback</small></div><em class="muted">3 due this week</em></div><div class="metric"><span class="metric-icon teal">◎</span><div><strong>86%</strong><small>Milestone health</small></div><em>On track</em></div></section>
                 <section class="readiness-panel panel"><div class="panel-heading"><div><p class="eyebrow">Research readiness</p><h2>Know what is ready before you write</h2></div><span class="live-label" id="readiness-summary">Checking connections…</span></div><div class="readiness-grid" id="readiness-list"><div class="loading-line">Checking AI, sync, and realtime services…</div></div></section>
                 <div class="section-heading" id="projects"><div><p class="eyebrow">Your research spaces</p><h2>Projects in motion</h2></div><a href="#projects">View all <span>→</span></a></div><section class="project-grid" id="project-list" aria-live="polite"><div class="empty-state">Loading your research spaces…</div></section>

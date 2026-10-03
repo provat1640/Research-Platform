@@ -38,6 +38,7 @@ class AiGateway
         return Http::baseUrl(rtrim((string) config('services.ai.base_url'), '/'))
             ->acceptJson()
             ->withToken((string) config('services.ai.key'))
+            ->connectTimeout((int) config('services.ai.connect_timeout', 5))
             ->timeout((int) config('services.ai.timeout', 30));
     }
 }
