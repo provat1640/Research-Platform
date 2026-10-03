@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+        <title>Co-Auth Research Studio</title>
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    </head>
+    <body>
+        <div class="app-shell">
+            <aside class="sidebar">
+                <a class="brand" href="{{ route('dashboard') }}"><span class="brand-mark">C</span><span><strong>Co-Auth</strong><small>research studio</small></span></a>
+                <nav class="primary-nav" aria-label="Primary navigation"><a class="nav-item is-active" href="{{ route('dashboard') }}"><span>◒</span>Overview</a><a class="nav-item" href="#projects"><span>□</span>My projects</a><a class="nav-item" href="#activity"><span>↗</span>Activity</a></nav>
+                <div class="sidebar-foot"><div class="status-dot"><span></span>Workspace online</div><p>Build a clearer thesis, together.</p></div>
+            </aside>
+            <main class="main-content">
+                <header class="topbar"><div class="breadcrumbs"><span>Workspace</span><b>/</b><strong>Overview</strong></div><div class="profile-chip"><span class="avatar avatar-teal">MS</span><span><strong>Mira Sen</strong><small>Student researcher</small></span><span class="chevron">⌄</span></div></header>
+                <section class="welcome-row"><div><p class="eyebrow">Friday, 03 October 2026</p><h1>Good morning, Mira<span>.</span></h1><p class="lede">Your research spaces, shared notes, and feedback in one calm place.</p></div><button class="button button-primary" type="button" data-open-project-form>＋ New project</button></section>
+                <section class="metric-grid" aria-label="Workspace summary"><div class="metric"><span class="metric-icon amber">◈</span><div><strong id="project-count">0</strong><small>Active projects</small></div><em>+1 this month</em></div><div class="metric"><span class="metric-icon coral">↗</span><div><strong>12</strong><small>Open feedback</small></div><em class="muted">3 due this week</em></div><div class="metric"><span class="metric-icon teal">◎</span><div><strong>86%</strong><small>Milestone health</small></div><em>On track</em></div></section>
+                <div class="section-heading" id="projects"><div><p class="eyebrow">Your research spaces</p><h2>Projects in motion</h2></div><a href="#projects">View all <span>→</span></a></div><section class="project-grid" id="project-list" aria-live="polite"><div class="empty-state">Loading your research spaces…</div></section>
+                <section class="lower-grid" id="activity"><div class="panel activity-panel"><div class="panel-heading"><div><p class="eyebrow">Live workspace</p><h2>Recent activity</h2></div><span class="live-label"><i></i>Live</span></div><div class="activity-item"><span class="activity-icon teal">MS</span><p><strong>Mira Sen</strong> updated the methodology notes<small>Adaptive Learning in Distributed Teams · 18 min ago</small></p><span class="activity-arrow">→</span></div><div class="activity-item"><span class="activity-icon amber">AK</span><p><strong>Alex Kim</strong> left feedback on your literature review<small>Adaptive Learning in Distributed Teams · 1 hr ago</small></p><span class="activity-arrow">→</span></div><div class="activity-item"><span class="activity-icon coral">RN</span><p><strong>Ravi Nair</strong> joined a research project<small>Climate Resilience in Urban Systems · 3 hrs ago</small></p><span class="activity-arrow">→</span></div></div><div class="panel focus-panel"><div class="panel-heading"><div><p class="eyebrow">Today</p><h2>Next focus</h2></div><span class="focus-date">03 OCT</span></div><div class="focus-block"><span class="focus-number">01</span><div><strong>Refine research questions</strong><p>Adaptive Learning in Distributed Teams</p></div><span class="checkmark">✓</span></div><div class="focus-block"><span class="focus-number">02</span><div><strong>Review supervisor notes</strong><p>Climate Resilience in Urban Systems</p></div><span class="checkmark">✓</span></div><button class="text-button">Open task board <span>→</span></button></div></section>
+            </main>
+        </div>
+        <dialog class="project-dialog" id="project-dialog"><form method="dialog" id="project-form"><button class="dialog-close" value="cancel" aria-label="Close">×</button><p class="eyebrow">Start a shared space</p><h2>New research project</h2><p class="dialog-copy">Give your thesis a home for drafts, feedback, and shared momentum.</p><label>Project title<input name="title" required maxlength="150" placeholder="e.g. Adaptive Learning in Distributed Teams"></label><label>Discipline<input name="discipline" maxlength="100" placeholder="e.g. Computer Science"></label><label>Short description<textarea name="description" maxlength="1000" rows="3" placeholder="What question is this project exploring?"></textarea></label><div class="dialog-actions"><button class="button button-quiet" value="cancel">Cancel</button><button class="button button-primary" value="default">Create project</button></div><p class="form-error" id="form-error" role="alert"></p></form></dialog>
+    </body>
+</html>

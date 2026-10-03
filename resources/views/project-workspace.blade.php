@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+        <title>{{ $project->title }} · Co-Auth</title>
+        @vite(['resources/css/app.css', 'resources/js/workspace.js'])
+    </head>
+    <body data-project-id="{{ $project->id }}">
+        <div class="workspace-shell">
+            <header class="workspace-topbar"><a class="brand" href="{{ route('dashboard') }}"><span class="brand-mark">C</span><span><strong>Co-Auth</strong><small>research studio</small></span></a><div class="workspace-crumb"><a href="{{ route('dashboard') }}">All projects</a><span>/</span><strong>{{ $project->title }}</strong></div><div class="workspace-actions"><span class="save-state" id="save-state">All changes saved</span><a class="button button-quiet" href="{{ route('dashboard') }}">← Back</a></div></header>
+            <main class="workspace-main">
+                <section class="workspace-heading"><div><p class="eyebrow">{{ $project->discipline ?: 'Research project' }} · Thesis workspace</p><h1>{{ $project->title }}</h1><p class="workspace-description">{{ $project->description ?: 'A shared space for your research, writing, and supervisor feedback.' }}</p></div><div class="workspace-progress"><strong>{{ $project->progress }}%</strong><span>milestone health</span><div class="progress-track"><div class="progress-bar" style="width: {{ $project->progress }}%"></div></div></div></section>
+                <div class="workspace-grid"><section class="editor-panel"><div class="editor-toolbar"><div class="toolbar-group"><button type="button" data-command="bold"><strong>B</strong></button><button type="button" data-command="italic"><em>I</em></button><button type="button" data-command="insertUnorderedList">☷</button></div><span class="version-label" id="version-label">Version 0</span><button class="button button-primary" id="save-version" type="button">Save version</button></div><div class="editor-canvas" id="editor-canvas" contenteditable="true" role="textbox" aria-label="Thesis editor"><h2>Research questions</h2><p>What happens when thesis writers and supervisors share one living research space?</p><p>Use this canvas to shape your argument, capture evidence, and leave a clear trail for the people helping you think.</p><h2>Working notes</h2><p>Start with the problem your research makes visible. Add sources, decisions, and open questions as the project develops.</p></div></section><aside class="workspace-sidebar"><div class="side-section"><div class="side-heading"><div><p class="eyebrow">Project team</p><h2>Collaborators</h2></div><button class="icon-button" type="button" title="Invite collaborator">＋</button></div><div id="member-list" class="member-list"><div class="loading-line">Loading team…</div></div></div><div class="side-section review-section"><div class="side-heading"><div><p class="eyebrow">Supervisor desk</p><h2>Feedback loop</h2></div><span class="review-count">2</span></div><div class="feedback-note"><span class="avatar avatar-coral">AK</span><div><strong>Alex Kim</strong><p>“The methodology is taking shape. Clarify how you will measure the first outcome.”</p><small>1 hour ago</small></div></div><button class="text-button">Open feedback thread <span>→</span></button></div><div class="side-section"><div class="side-heading"><div><p class="eyebrow">Document trail</p><h2>Version history</h2></div></div><div id="version-history" class="version-history"><div class="loading-line">No versions yet</div></div></div></aside></div>
+            </main>
+        </div>
+    </body>
+</html>
