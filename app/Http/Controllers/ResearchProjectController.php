@@ -64,6 +64,19 @@ class ResearchProjectController extends Controller
             'documentVersions' => fn ($query) => $query->with('author:id,name')->latest('version_number')->limit(1),
         ]);
 
+        $activeEditor = null;
+        if ($project->active_editor_id && $project->active_editor_at && $project->active_editor_at->diffInMinutes(now()) < 5) {
+            $project->loadMissing('activeEditor:id,name');
+            if ($project->activeEditor) {
+                $activeEditor = [
+                    'id' => $project->activeEditor->id,
+                    'name' => $project->activeEditor->name,
+                    'section' => $project->active_editor_section ?: 'Manuscript',
+                    'active_at' => $project->active_editor_at->diffForHumans(),
+                ];
+            }
+        }
+
         return response()->json(['data' => [
             ...$this->projectPayload($project),
             'description' => $project->description,
@@ -71,6 +84,13 @@ class ResearchProjectController extends Controller
             'methodology' => $project->methodology,
             'expected_outcome' => $project->expected_outcome,
             'ethics_status' => $project->ethics_status,
+            'paper_layout' => $project->paper_layout ?? 'single_column',
+            'paper_margin' => $project->paper_margin ?? 'normal',
+            'paper_size' => $project->paper_size ?? 'a4',
+            'font_family' => $project->font_family ?? 'serif',
+            'line_spacing' => $project->line_spacing ?? '1.5',
+            'active_theme' => $project->active_theme ?? 'clean_white',
+            'active_editor' => $activeEditor,
             'members' => $project->members->map(fn (User $member): array => [
                 'id' => $member->id,
                 'name' => $member->name,
@@ -92,6 +112,90 @@ class ResearchProjectController extends Controller
         $project->update($validated);
 
         return response()->json(['data' => $project->fresh()]);
+    }
+
+    public function updateFormatting(Request $request, ResearchProject $project): JsonResponse
+    {
+        $validated = $request->validate([
+            'paper_layout' => ['nullable', 'in:single_column,two_column'],
+            'paper_margin' => ['nullable', 'in:normal,narrow,moderate,wide'],
+            'paper_size' => ['nullable', 'in:a4,letter'],
+            'font_family' => ['nullable', 'in:serif,sans,mono'],
+            'line_spacing' => ['nullable', 'in:1.0,1.15,1.5,2.0'],
+            'active_theme' => ['nullable', 'in:clean_white,warm_sepia,academic_dark'],
+        ]);
+
+        $project->update($validated);
+
+        return response()->json(['data' => $project->fresh()]);
+    }
+
+    public function updatePresence(Request $request, ResearchProject $project): JsonResponse
+    {
+        $validated = $request->validate([
+            'section' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $user = $request->user();
+        if ($user) {
+            $project->update([
+                'active_editor_id' => $user->id,
+                'active_editor_section' => $validated['section'] ?? 'Manuscript',
+                'active_editor_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'data' => [
+                'editor' => $user?->name,
+                'section' => $validated['section'] ?? 'Manuscript',
+                'timestamp' => now()->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function addMember(Request $request, ResearchProject $project): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'role' => ['required', 'in:student,co-author,supervisor,reviewer'],
+        ]);
+
+        $targetUser = User::query()->where('email', $validated['email'])->first();
+
+        if (! $targetUser) {
+            $targetUser = User::create([
+                'name' => explode('@', $validated['email'])[0],
+                'email' => $validated['email'],
+                'password' => bcrypt('password123'),
+                'orcid_id' => '0000-0002-'.rand(1000, 9999).'-'.rand(1000, 9999),
+                'is_teacher' => in_array($validated['role'], ['supervisor', 'reviewer']),
+            ]);
+        }
+
+        $project->members()->syncWithoutDetaching([
+            $targetUser->id => ['role' => $validated['role']],
+        ]);
+
+        return response()->json([
+            'message' => "Collaborator {$targetUser->name} added to project.",
+            'data' => [
+                'id' => $targetUser->id,
+                'name' => $targetUser->name,
+                'role' => $validated['role'],
+            ],
+        ], 201);
+    }
+
+    public function removeMember(ResearchProject $project, User $user): JsonResponse
+    {
+        if ($project->owner_id === $user->id) {
+            return response()->json(['message' => 'Project owner cannot be removed.'], 422);
+        }
+
+        $project->members()->detach($user->id);
+
+        return response()->json(['message' => 'Collaborator removed from project.']);
     }
 
     public function storeVersion(Request $request, ResearchProject $project): JsonResponse
