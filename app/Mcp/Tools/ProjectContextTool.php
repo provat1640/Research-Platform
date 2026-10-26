@@ -19,7 +19,15 @@ class ProjectContextTool extends Tool
         ]);
 
         $project = ResearchProject::query()
-            ->with(['owner:id,name', 'members:id,name', 'tasks', 'feedback', 'papers:id,research_project_id,title,status'])
+            ->with([
+                'owner:id,name',
+                'members:id,name',
+                'tasks',
+                'feedback',
+                'papers:id,research_project_id,title,status',
+                'citations',
+                'media',
+            ])
             ->findOrFail($validated['project_id']);
 
         return Response::json([
@@ -28,6 +36,8 @@ class ProjectContextTool extends Tool
                 'title' => $project->title,
                 'discipline' => $project->discipline,
                 'description' => $project->description,
+                'research_question' => $project->research_question,
+                'methodology' => $project->methodology,
                 'status' => $project->status,
                 'progress' => $project->progress,
             ],
@@ -41,6 +51,21 @@ class ProjectContextTool extends Tool
             'papers' => $project->papers->map(fn ($paper): array => [
                 'title' => $paper->title,
                 'status' => $paper->status,
+            ])->values()->all(),
+            'citations' => $project->citations->map(fn ($citation): array => [
+                'key' => $citation->key,
+                'in_text_tag' => $citation->in_text_tag,
+                'title' => $citation->title,
+                'authors' => $citation->authors,
+                'year' => $citation->year,
+                'doi' => $citation->doi,
+                'source' => $citation->source,
+            ])->values()->all(),
+            'media' => $project->media->map(fn ($media): array => [
+                'figure_number' => $media->figure_number,
+                'title' => $media->title,
+                'caption' => $media->caption,
+                'file_path' => $media->file_path,
             ])->values()->all(),
         ]);
     }

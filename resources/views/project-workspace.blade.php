@@ -7,7 +7,7 @@
         <title>{{ $project->title }} · Research Studio · Co-Auth</title>
         @vite(['resources/css/app.css', 'resources/js/workspace.js'])
     </head>
-    <body data-project-id="{{ $project->id }}" class="layout-full theme-clean-white font-serif margin-normal spacing-1-5 layout-single-col">
+    <body data-project-id="{{ $project->id }}" class="live-tech-ui layout-full theme-clean-white font-serif margin-normal spacing-1-5 layout-single-col">
         <div class="workspace-shell">
             <header class="workspace-topbar">
                 <a class="brand" href="{{ route('dashboard') }}">
@@ -42,6 +42,7 @@
 
                 <div class="workspace-actions">
                     <span class="save-state" id="save-state">All changes saved</span>
+                    <button class="button button-quiet" type="button" id="btn-export-markdown" title="Export manuscript as Markdown (.md)">📥 Export .md</button>
                     <button class="button button-quiet" type="button" id="open-format-panel" title="Paper margins and typography">📐 Paper layout</button>
                     <button class="button button-quiet" type="button" id="print-paper" title="Print or export manuscript to PDF">🖨 Print / PDF</button>
                     <a class="button button-quiet" href="{{ route('dashboard') }}">← Back</a>
@@ -60,9 +61,12 @@
                         <p class="workspace-description">{{ $project->description ?: 'A shared collaborative space for thesis drafting, evidence capture, citations, and supervisor reviews.' }}</p>
                         <div class="ai-button-row">
                             <button class="button button-ai" id="ai-summary" type="button">✦ Ask research assistant</button>
+                            <button class="button button-ai-quiet" type="button" data-ai-instruction="Review the current project context and identify the three most important next research actions.">Next best actions</button>
+                            <button class="button button-ai-quiet" type="button" data-ai-instruction="Check whether the research question, methodology, evidence, and expected contribution are aligned.">Check alignment</button>
                             <button class="button button-quiet" id="open-theory-guide" type="button">📚 Differentiate methodology theories</button>
                         </div>
                         <p class="ai-result" id="ai-result" role="status"></p>
+                        <span class="ai-model-badge" id="ai-model-badge">Configured research assistant</span>
                     </div>
                     <div class="workspace-progress">
                         <strong>{{ $project->progress }}%</strong>
@@ -72,9 +76,23 @@
                         </div>
                     </div>
                 </section>
+                @php
+                    $activeLifecycleStage = $project->progress < 34 ? 'initialization' : ($project->progress < 67 ? 'presentation' : 'review');
+                @endphp
+                <nav class="workspace-stage-rail" aria-label="Research lifecycle stages">
+                    @foreach (config('research.lifecycle') as $stage)
+                        <a class="workspace-stage {{ $activeLifecycleStage === $stage['key'] ? 'is-active' : '' }} workspace-stage-{{ $stage['accent'] }}" href="#stage-{{ $stage['key'] }}">
+                            <span class="workspace-stage-number">{{ $stage['number'] }}</span>
+                            <span><strong>{{ $stage['title'] }}</strong><small>{{ $stage['eyebrow'] }}</small></span>
+                        </a>
+                        @if (!$loop->last)
+                            <span class="workspace-stage-arrow" aria-hidden="true">→</span>
+                        @endif
+                    @endforeach
+                </nav>
 
                 <!-- Research Setup & Methodology Theory Differentiation Panel -->
-                <section class="setup-panel panel">
+                <section class="setup-panel panel" id="stage-initialization">
                     <div class="panel-heading">
                         <div>
                             <p class="eyebrow">Research Method & Theoretical Framework</p>
@@ -132,10 +150,27 @@
                     </form>
                 </section>
 
+                <section class="studio-architecture panel" aria-labelledby="studio-architecture-title">
+                    <div class="panel-heading">
+                        <div><p class="eyebrow">Studio architecture</p><h2 id="studio-architecture-title">Follow the research from question to contribution</h2></div>
+                        <button class="text-button" type="button" id="toggle-architecture" aria-expanded="true">Collapse tree ↑</button>
+                    </div>
+                    <div class="architecture-tree" id="architecture-tree">
+                        <button class="architecture-node is-root" type="button" data-architecture-node="question"><span class="node-marker">Q</span><span><strong>Research question</strong><small>Problem, scope, stakeholders, and expected outcome</small></span><span class="node-state">01</span></button>
+                        <div class="architecture-branch">
+                            <button class="architecture-node" type="button" data-architecture-node="method"><span class="node-marker">M</span><span><strong>Method & theory</strong><small>Paradigm, epistemology, design, and ethics</small></span><span class="node-state">02</span></button>
+                            <button class="architecture-node" type="button" data-architecture-node="evidence"><span class="node-marker">E</span><span><strong>Evidence & sources</strong><small>Data, citations, figures, and reproducible records</small></span><span class="node-state">03</span></button>
+                            <button class="architecture-node" type="button" data-architecture-node="review"><span class="node-marker">R</span><span><strong>Review & reflection</strong><small>Feedback, version history, limitations, and validity</small></span><span class="node-state">04</span></button>
+                            <button class="architecture-node" type="button" data-architecture-node="contribution"><span class="node-marker">C</span><span><strong>Contribution</strong><small>Findings, implications, artifacts, and next work</small></span><span class="node-state">05</span></button>
+                        </div>
+                    </div>
+                    <p class="architecture-detail" id="architecture-detail">Select a node to keep the manuscript structure connected to the proposal.</p>
+                </section>
+
                 <!-- Workspace Grid: Editor + Multi-Tab Collaboration Hub -->
                 <div class="workspace-grid" id="workspace-grid">
                     <!-- Manuscript Editor Panel -->
-                    <section class="editor-panel">
+                    <section class="editor-panel" id="stage-presentation">
                         <!-- Formatting & Academic Tools Toolbar -->
                         <div class="editor-toolbar">
                             <div class="toolbar-group">
@@ -212,7 +247,7 @@
                             <div class="paper-sheet" id="paper-sheet">
                                 <!-- Running Paper Header -->
                                 <div class="paper-running-head">
-                                    <span class="running-title">{{ $project->title }}</span>
+                                    <span class="running-title">{{ $project->title }} <span class="running-methodology" id="running-methodology">· Methodology pending</span></span>
                                     <span class="running-page">Page 1</span>
                                 </div>
 
@@ -234,20 +269,32 @@
                                     <p>Document observations, system benchmarks, participant transcripts, and open questions here as the project develops.</p>
                                 </div>
 
-                                <!-- Paper Running Footer -->
+                                <!-- Paper Running Footer with Live Metrics -->
                                 <div class="paper-running-foot">
-                                    <span>Co-Auth Institutional Research Platform</span>
-                                    <span>Confidential Working Draft</span>
+                                    <div class="paper-meta-stats" id="paper-stats" title="Real-time academic manuscript metrics">
+                                        <span id="stat-words">0 words</span>
+                                        <span class="stat-sep">·</span>
+                                        <span id="stat-chars">0 characters</span>
+                                        <span class="stat-sep">·</span>
+                                        <span id="stat-read-time">~1 min read</span>
+                                    </div>
+                                    <div class="paper-foot-tag">
+                                        <span id="paper-principle">Research integrity · traceable evidence · reflective practice</span>
+                                        <span class="stat-sep">·</span>
+                                        <span>Confidential Working Draft</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </section>
 
                     <!-- Multi-Tab Sidebar: Collaboration, Citations, Media, Tasks, Feedback -->
+                    <span id="stage-review" class="lifecycle-anchor" aria-hidden="true"></span>
                     <aside class="workspace-sidebar" id="workspace-sidebar">
                         <!-- Sidebar Navigation Tabs -->
                         <div class="sidebar-tab-row" role="tablist">
-                            <button type="button" class="sidebar-tab is-active" data-sidebar-tab="team" title="Collaborators & Live Presence">Team</button>
+                            <button type="button" class="sidebar-tab sidebar-tab-ai is-active" data-sidebar-tab="ai" title="AI Research Lab">✦ AI Lab</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="team" title="Collaborators & Live Presence">Team</button>
                             <button type="button" class="sidebar-tab" data-sidebar-tab="citations" title="Citations & Bibliography">Citations</button>
                             <button type="button" class="sidebar-tab" data-sidebar-tab="figures" title="Figures & Media Gallery">Figures</button>
                             <button type="button" class="sidebar-tab" data-sidebar-tab="tasks" title="Task Board & Tasks">Tasks</button>
@@ -255,8 +302,55 @@
                             <button type="button" class="sidebar-tab" data-sidebar-tab="history" title="Version Snapshots">History</button>
                         </div>
 
+                        <!-- AI Lab: persistent context-grounded research assistance -->
+                        <div class="sidebar-panel ai-lab-panel is-active" id="tab-panel-ai">
+                            <div class="side-heading">
+                                <div>
+                                    <p class="eyebrow">Context-grounded AI</p>
+                                    <h2>Research copilot</h2>
+                                </div>
+                                <span class="ai-live-dot"><i></i>Ready</span>
+                            </div>
+                            <p class="panel-subcopy">Ask about this project and receive guidance grounded in its question, method, tasks, feedback, papers, and citations.</p>
+                            <div class="ai-provider-card">
+                                <div class="ai-personal-logo ai-logo-orchestrator" aria-hidden="true">✦</div>
+                                <div class="ai-provider-copy"><strong id="ai-active-identity">Research Copilot</strong><small id="ai-lab-model">Groq model configured server-side</small></div>
+                                <span class="ai-collaboration-state"><i></i>Connected</span>
+                            </div>
+                            <div class="ai-collaboration-card">
+                                <div class="ai-collaboration-heading"><strong>AI studio team</strong><span>Shared context</span></div>
+                                <p>Each model has a clear role. The active model answers your request while the other configured models remain available for a future handoff or comparison.</p>
+                                <div class="ai-agent-roster" aria-label="Configured AI collaborators">
+                                    <div class="ai-agent is-active" data-ai-agent="llama">
+                                        <span class="ai-personal-logo ai-logo-llama">L</span>
+                                        <span><strong>Llama Research Assistant</strong><small>Active reasoning</small></span>
+                                        <i></i>
+                                    </div>
+                                    <div class="ai-agent" data-ai-agent="deepseek">
+                                        <span class="ai-personal-logo ai-logo-deepseek">D</span>
+                                        <span><strong>DeepSeek</strong><small>Standby reviewer</small></span>
+                                        <i></i>
+                                    </div>
+                                    <div class="ai-agent" data-ai-agent="qwen">
+                                        <span class="ai-personal-logo ai-logo-qwen">Q</span>
+                                        <span><strong>Qwen</strong><small>Standby builder</small></span>
+                                        <i></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <label class="ai-prompt-label" for="ai-lab-prompt">What should we work on?</label>
+                            <textarea id="ai-lab-prompt" class="ai-prompt" rows="4" placeholder="Ask for a literature gap, methodology check, next step, or evidence review…"></textarea>
+                            <div class="ai-quick-actions">
+                                <button type="button" class="ai-quick-action" data-ai-instruction="Summarize the current project state and recommend the next three research actions.">Summarize project</button>
+                                <button type="button" class="ai-quick-action" data-ai-instruction="Identify unresolved risks, feedback, or evidence gaps in this research project.">Find research gaps</button>
+                                <button type="button" class="ai-quick-action" data-ai-instruction="Suggest a rigorous structure for the next manuscript section based on the current methodology.">Plan next section</button>
+                            </div>
+                            <button class="button button-ai ai-lab-submit" id="ai-lab-submit" type="button">Run research copilot <span>⌘↵</span></button>
+                            <div class="ai-lab-output" id="ai-lab-output" role="status"><span class="ai-output-placeholder">Your grounded response will appear here.</span></div>
+                        </div>
+
                         <!-- TAB 1: Team & Collaboration (Individual & 2/3 Group Seamless Work) -->
-                        <div class="sidebar-panel is-active" id="tab-panel-team">
+                        <div class="sidebar-panel" id="tab-panel-team">
                             <div class="side-heading">
                                 <div>
                                     <p class="eyebrow">Project Team</p>
@@ -289,7 +383,19 @@
                                 <button class="button button-quiet button-sm" type="button" id="btn-add-citation">＋ Add citation</button>
                             </div>
                             <p class="panel-subcopy">Insert citations at your cursor position or generate the bibliography list.</p>
-                            <button type="button" class="button button-primary button-full" id="btn-generate-references-action">📚 Append References to Paper</button>
+                            <div class="citation-actions-row">
+                                <button type="button" class="button button-primary" id="btn-generate-references-action" style="flex: 1;">📚 Append References</button>
+                                <a href="/api/v1/projects/{{ $project->id }}/citations/export?download=1" class="button button-quiet" id="btn-export-bibtex" download title="Download BibTeX (.bib) file for LaTeX / Overleaf">💾 Export .bib</a>
+                            </div>
+                            <div class="overleaf-guide">
+                                <strong>Overleaf handoff</strong>
+                                <p>Export the <code>.bib</code> file, upload it to Overleaf, and cite with the same keys used in this manuscript.</p>
+                                <ol><li>Download <code>references.bib</code>.</li><li>Upload it beside your <code>.tex</code> file.</li><li>Choose a matching APA, IEEE, or Chicago bibliography style.</li></ol>
+                                <span>Source keys stay traceable across Co-Auth and Overleaf.</span>
+                            </div>
+                            <div class="citation-filter-wrap" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="search" class="search-input" id="citation-search" placeholder="🔍 Filter citations..." style="width: 100%;">
+                            </div>
                             <div id="citation-list" class="citation-list">
                                 <div class="loading-line">Loading citations…</div>
                             </div>
@@ -597,6 +703,7 @@
 
                 <!-- Existing Citations List for 1-Click In-Text Insertion -->
                 <div id="existing-citations-container">
+                    <input type="search" class="search-input" id="modal-citation-search" placeholder="🔍 Search by author or title..." style="width: 100%; margin-bottom: 0.75rem;">
                     <div id="quick-citation-picker" class="quick-citation-picker">
                         <div class="loading-line">Loading citations…</div>
                     </div>

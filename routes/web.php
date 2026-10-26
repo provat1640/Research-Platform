@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function (): void {
 
         return view('module-index', [
             'module' => 'Task board',
+            'stage' => 'Initialization',
             'eyebrow' => 'Shared work',
             'description' => 'Turn research decisions into visible next steps for the whole team.',
             'items' => ProjectTask::query()
@@ -50,6 +51,7 @@ Route::middleware('auth')->group(function (): void {
 
         return view('module-index', [
             'module' => 'Feedback desk',
+            'stage' => 'Review',
             'eyebrow' => 'Review loop',
             'description' => 'Keep supervisor notes, responses, and resolved decisions in one trail.',
             'items' => ProjectFeedback::query()

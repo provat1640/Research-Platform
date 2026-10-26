@@ -7,6 +7,7 @@ use App\Models\ResearchProject;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class CitationController extends Controller
 {
@@ -15,6 +16,52 @@ class CitationController extends Controller
         $citations = $project->citations()->with('addedBy:id,name')->latest()->get();
 
         return response()->json(['data' => $citations]);
+    }
+
+    public function export(Request $request, ResearchProject $project): JsonResponse|Response
+    {
+        $citations = $project->citations()->orderBy('id')->get();
+
+        $bibtexEntries = $citations->map(function (Citation $c): string {
+            $key = $c->key ?: 'ref'.$c->id;
+            $fields = [];
+
+            if ($c->authors) {
+                $fields[] = '  author = {'.addcslashes($c->authors, '{}').'}';
+            }
+            if ($c->title) {
+                $fields[] = '  title = {'.addcslashes($c->title, '{}').'}';
+            }
+            if ($c->source) {
+                $fields[] = '  journal = {'.addcslashes($c->source, '{}').'}';
+            }
+            if ($c->year) {
+                $fields[] = '  year = {'.$c->year.'}';
+            }
+            if ($c->doi) {
+                $fields[] = '  doi = {'.$c->doi.'}';
+            }
+            if ($c->url) {
+                $fields[] = '  url = {'.$c->url.'}';
+            }
+
+            return "@article{{$key},\n".implode(",\n", $fields)."\n}";
+        })->implode("\n\n");
+
+        if ($request->query('download') || $request->query('format') === 'bibtex_file') {
+            $filename = Str::slug($project->title).'-references.bib';
+
+            return response($bibtexEntries, 200, [
+                'Content-Type' => 'application/x-bibtex; charset=utf-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ]);
+        }
+
+        return response()->json([
+            'count' => $citations->count(),
+            'bibtex' => $bibtexEntries,
+            'citations' => $citations,
+        ]);
     }
 
     public function store(Request $request, ResearchProject $project): JsonResponse

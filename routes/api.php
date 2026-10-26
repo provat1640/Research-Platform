@@ -23,6 +23,7 @@ Route::prefix('v1')->middleware('auth')->group(function (): void {
         Route::post('/projects/{project}/members', [ResearchProjectController::class, 'addMember']);
         Route::delete('/projects/{project}/members/{user}', [ResearchProjectController::class, 'removeMember']);
         Route::get('/projects/{project}/citations', [CitationController::class, 'index']);
+        Route::get('/projects/{project}/citations/export', [CitationController::class, 'export']);
         Route::post('/projects/{project}/citations', [CitationController::class, 'store']);
         Route::delete('/projects/{project}/citations/{citation}', [CitationController::class, 'destroy']);
         Route::get('/projects/{project}/media', [ProjectMediaController::class, 'index']);

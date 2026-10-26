@@ -53,7 +53,8 @@ class AiController extends Controller
 
         return response()->json([
             'data' => [
-                'model' => $result['model'] ?? config('services.ai.model'),
+                'model' => $result['model'] ?? $ai->model(),
+                'provider' => $ai->provider(),
                 'content' => data_get($result, 'choices.0.message.content'),
             ],
         ]);
@@ -80,7 +81,8 @@ class AiController extends Controller
         }
 
         return response()->json(['data' => [
-            'model' => $result['model'] ?? config('services.ai.model'),
+            'model' => $result['model'] ?? $ai->model(),
+            'provider' => $ai->provider(),
             'content' => data_get($result, 'choices.0.message.content'),
         ]]);
     }

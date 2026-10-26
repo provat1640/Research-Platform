@@ -14,6 +14,29 @@ const setupForm = document.querySelector('#setup-form');
 const setupState = document.querySelector('#setup-state');
 const activeEditorBanner = document.querySelector('#active-editor-banner');
 const methodologySelect = document.querySelector('#methodology-select');
+const runningMethodology = document.querySelector('#running-methodology');
+const paperPrinciple = document.querySelector('#paper-principle');
+const aiModelBadge = document.querySelector('#ai-model-badge');
+const aiLabPrompt = document.querySelector('#ai-lab-prompt');
+const aiLabSubmit = document.querySelector('#ai-lab-submit');
+const aiLabOutput = document.querySelector('#ai-lab-output');
+const aiLabModel = document.querySelector('#ai-lab-model');
+const aiActiveIdentity = document.querySelector('#ai-active-identity');
+const aiAgents = document.querySelectorAll('[data-ai-agent]');
+
+const updateAiIdentity = (model = '') => {
+    const normalizedModel = model.toLowerCase();
+    const identity = normalizedModel.includes('deepseek')
+        ? { key: 'deepseek', name: 'DeepSeek Reviewer' }
+        : normalizedModel.includes('qwen')
+            ? { key: 'qwen', name: 'Qwen Builder' }
+            : { key: 'llama', name: 'Llama Research Assistant' };
+
+    if (aiActiveIdentity) aiActiveIdentity.textContent = identity.name;
+    aiAgents.forEach((agent) => agent.classList.toggle('is-active', agent.dataset.aiAgent === identity.key));
+};
+
+updateAiIdentity();
 
 // Cached project data
 let currentProject = null;
@@ -86,7 +109,107 @@ const updateTheoryCard = (methodology) => {
     }
 };
 
-methodologySelect?.addEventListener('change', (e) => updateTheoryCard(e.target.value));
+const updateResearchFrame = (methodology) => {
+    const principles = {
+        Qualitative: 'credibility · reflexivity · participant voice',
+        Quantitative: 'validity · reliability · reproducibility',
+        'Mixed methods': 'triangulation · integration · pragmatic fit',
+        'Design science': 'utility · rigor · artifact evaluation',
+        'Literature review': 'transparency · evidence synthesis · PRISMA',
+        'Action research': 'participation · reflection · change',
+    };
+
+    if (runningMethodology) {
+        runningMethodology.textContent = methodology ? `· ${methodology}` : '· Methodology pending';
+    }
+    if (paperPrinciple) {
+        paperPrinciple.textContent = principles[methodology] || 'Research integrity · traceable evidence · reflective practice';
+    }
+};
+
+methodologySelect?.addEventListener('change', (e) => {
+    updateTheoryCard(e.target.value);
+    updateResearchFrame(e.target.value);
+});
+
+const architectureDetails = {
+    question: 'Start with a bounded question: define the problem, who it serves, and what a meaningful outcome looks like.',
+    method: 'Make the paradigm visible. Link the research question to an appropriate method, theoretical stance, and ethics decision.',
+    evidence: 'Treat every claim as traceable: connect source keys, figures, datasets, and observations to the section where they are used.',
+    review: 'Use feedback and versions as part of the method. Record limitations, supervisor decisions, and reflections instead of losing them in email.',
+    contribution: 'Close the loop with a defensible contribution: findings, artifact utility, implications, and a concrete next research step.',
+};
+
+document.querySelectorAll('[data-architecture-node]').forEach((node) => {
+    node.addEventListener('click', () => {
+        document.querySelectorAll('[data-architecture-node]').forEach((item) => item.classList.remove('is-selected'));
+        node.classList.add('is-selected');
+        const detail = document.querySelector('#architecture-detail');
+        if (detail) detail.textContent = architectureDetails[node.dataset.architectureNode];
+    });
+});
+
+document.querySelector('#toggle-architecture')?.addEventListener('click', (event) => {
+    const tree = document.querySelector('#architecture-tree');
+    if (!tree) return;
+    const isCollapsed = tree.classList.toggle('is-collapsed');
+    event.currentTarget.setAttribute('aria-expanded', String(!isCollapsed));
+    event.currentTarget.textContent = isCollapsed ? 'Expand tree ↓' : 'Collapse tree ↑';
+});
+
+const runAiSummary = async (instruction, sourceButton = null) => {
+    const buttons = [aiSummaryButton, aiLabSubmit, ...document.querySelectorAll('[data-ai-instruction]')].filter(Boolean);
+    buttons.forEach((button) => { button.disabled = true; });
+    if (sourceButton) sourceButton.textContent = 'Thinking…';
+    if (aiSummaryButton) aiSummaryButton.textContent = 'Analyzing thesis context…';
+    if (aiLabOutput) aiLabOutput.innerHTML = '<span class="ai-output-loading">Synthesizing project context…</span>';
+    if (aiResult) aiResult.textContent = '';
+
+    try {
+        const response = await fetch(`/api/v1/projects/${projectId}/ai/summary`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ instruction: instruction || 'Summarize the current project state and recommend the next three research actions.' }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+            throw new Error(payload.message || 'The research assistant is unavailable right now.');
+        }
+
+        const content = payload.data.content || 'No response was returned.';
+        if (aiResult) aiResult.textContent = content;
+        if (aiLabOutput) aiLabOutput.textContent = content;
+        if (aiModelBadge) aiModelBadge.textContent = `${payload.data.provider || 'AI'} · ${payload.data.model || 'configured model'}`;
+        if (aiLabModel) aiLabModel.textContent = `${payload.data.provider || 'AI'} · ${payload.data.model || 'configured model'}`;
+        updateAiIdentity(payload.data.model || '');
+    } catch (error) {
+        if (aiResult) aiResult.textContent = error.message;
+        if (aiLabOutput) aiLabOutput.textContent = error.message;
+    } finally {
+        buttons.forEach((button) => { button.disabled = false; });
+        if (aiSummaryButton) aiSummaryButton.textContent = '✦ Ask research assistant';
+        if (sourceButton) sourceButton.textContent = 'Run research copilot';
+    }
+};
+
+document.querySelectorAll('[data-ai-instruction]').forEach((button) => {
+    button.addEventListener('click', () => {
+        if (aiLabPrompt) aiLabPrompt.value = button.dataset.aiInstruction;
+        runAiSummary(button.dataset.aiInstruction, button.classList.contains('ai-quick-action') ? aiLabSubmit : button);
+    });
+});
+
+aiLabSubmit?.addEventListener('click', () => runAiSummary(aiLabPrompt?.value, aiLabSubmit));
+aiLabPrompt?.addEventListener('keydown', (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        runAiSummary(aiLabPrompt.value, aiLabSubmit);
+    }
+});
 
 // ================= 2. RESEARCH PAPER TEMPLATES =================
 const PAPER_TEMPLATES = {
@@ -290,7 +413,10 @@ const loadWorkspace = async () => {
             setupForm.elements.expected_outcome.value = project.expected_outcome || '';
             setupForm.elements.ethics_status.value = project.ethics_status || 'not_assessed';
             updateTheoryCard(project.methodology);
+            updateResearchFrame(project.methodology);
         }
+
+        updateManuscriptStats();
     } catch (err) {
         console.error('Workspace load error:', err);
     }
@@ -429,7 +555,7 @@ const renderCitations = (citations) => {
     if (!citationList) return;
     citationList.innerHTML = citations.length
         ? citations.map((citation, idx) => `
-            <div class="citation-card">
+            <div class="citation-card citation-item">
                 <div class="citation-top">
                     <span class="citation-tag">${citation.in_text_tag || '[' + (idx + 1) + ']'}</span>
                     <button type="button" class="button button-quiet button-sm" data-insert-citation-tag="${citation.in_text_tag || '[' + (idx + 1) + ']'}" data-cite-key="${citation.key}" title="Insert into editor">Insert in text</button>
@@ -446,7 +572,7 @@ const renderCitations = (citations) => {
     if (quickPicker) {
         quickPicker.innerHTML = citations.length
             ? citations.map((citation, idx) => `
-                <div class="picker-row">
+                <div class="picker-row quick-citation-option">
                     <div>
                         <span class="citation-tag">${citation.in_text_tag || '[' + (idx + 1) + ']'}</span>
                         <strong>${citation.title}</strong>
@@ -648,6 +774,7 @@ document.addEventListener('click', (e) => {
             editor.innerHTML = templateHtml;
             document.querySelector('#template-dialog')?.close();
             saveState.textContent = 'Template applied to editor';
+            updateManuscriptStats();
         }
     }
 });
@@ -910,24 +1037,83 @@ document.addEventListener('click', async (event) => {
 });
 
 // AI Assistant button
-aiSummaryButton?.addEventListener('click', async () => {
-    aiSummaryButton.disabled = true;
-    aiSummaryButton.textContent = 'Analyzing thesis context…';
-    aiResult.textContent = '';
-    const response = await fetch(`/api/v1/projects/${projectId}/ai/summary`, {
-        method: 'POST',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        },
-        body: JSON.stringify({}),
+aiSummaryButton?.addEventListener('click', () => runAiSummary());
+
+// Live Manuscript Statistics (Word count, character count, reading time)
+const updateManuscriptStats = () => {
+    if (!editor) return;
+    const text = editor.innerText || '';
+    const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+    const chars = text.length;
+    const readMinutes = Math.max(1, Math.ceil(words / 220));
+
+    const wordEl = document.querySelector('#stat-words');
+    const charEl = document.querySelector('#stat-chars');
+    const timeEl = document.querySelector('#stat-read-time');
+
+    if (wordEl) wordEl.textContent = `${words.toLocaleString()} words`;
+    if (charEl) charEl.textContent = `${chars.toLocaleString()} characters`;
+    if (timeEl) timeEl.textContent = `~${readMinutes} min read`;
+};
+
+editor?.addEventListener('input', updateManuscriptStats);
+
+// Markdown Manuscript Exporter
+const convertHtmlToMarkdown = (html) => {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    temp.querySelectorAll('figure').forEach((fig) => {
+        const img = fig.querySelector('img');
+        const caption = fig.querySelector('figcaption');
+        const src = img ? img.getAttribute('src') : '';
+        const capText = caption ? caption.innerText.trim() : '';
+        fig.outerHTML = `\n\n![${capText}](${src})\n*${capText}*\n\n`;
     });
-    const payload = await response.json();
-    aiSummaryButton.disabled = false;
-    aiSummaryButton.textContent = '✦ Ask research assistant';
-    aiResult.textContent = response.ok ? payload.data.content : payload.message;
+
+    temp.querySelectorAll('h1').forEach((h) => { h.outerHTML = `\n\n# ${h.innerText.trim()}\n\n`; });
+    temp.querySelectorAll('h2').forEach((h) => { h.outerHTML = `\n\n## ${h.innerText.trim()}\n\n`; });
+    temp.querySelectorAll('h3').forEach((h) => { h.outerHTML = `\n\n### ${h.innerText.trim()}\n\n`; });
+    temp.querySelectorAll('h4').forEach((h) => { h.outerHTML = `\n\n#### ${h.innerText.trim()}\n\n`; });
+    temp.querySelectorAll('blockquote').forEach((bq) => { bq.outerHTML = `\n\n> ${bq.innerText.trim()}\n\n`; });
+    temp.querySelectorAll('ul li').forEach((li) => { li.outerHTML = `- ${li.innerText.trim()}\n`; });
+    temp.querySelectorAll('ol li').forEach((li, idx) => { li.outerHTML = `${idx + 1}. ${li.innerText.trim()}\n`; });
+    temp.querySelectorAll('.cite-ref').forEach((ref) => { ref.outerHTML = `[${ref.innerText.trim()}]`; });
+    temp.querySelectorAll('p').forEach((p) => { p.outerHTML = `\n\n${p.innerText.trim()}\n\n`; });
+
+    return temp.innerText.replace(/\n{3,}/g, '\n\n').trim();
+};
+
+document.querySelector('#btn-export-markdown')?.addEventListener('click', () => {
+    const title = currentProject?.title || 'manuscript';
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const mdContent = `# ${title}\n\n` + convertHtmlToMarkdown(editor.innerHTML);
+
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${slug}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    saveState.textContent = 'Exported manuscript to Markdown (.md)';
 });
+
+// Citation Search Filters
+const filterCitations = (query) => {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll('.citation-item').forEach((item) => {
+        item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+    document.querySelectorAll('.quick-citation-option').forEach((item) => {
+        item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+};
+
+document.querySelector('#citation-search')?.addEventListener('input', (e) => filterCitations(e.target.value));
+document.querySelector('#modal-citation-search')?.addEventListener('input', (e) => filterCitations(e.target.value));
 
 // Initial Load
 loadWorkspace();

@@ -9,10 +9,10 @@ class IntegrationHealth
     /**
      * @return array<string, array<string, string>>
      */
-    public function report(): array
+    public function report(AiGateway $ai): array
     {
         return [
-            'ai' => $this->probeAi(),
+            'ai' => $this->probeAi($ai),
             'supabase' => $this->probeSupabase(),
             'reverb' => $this->reverbStatus(),
         ];
@@ -21,21 +21,24 @@ class IntegrationHealth
     /**
      * @return array{status: string, label: string, detail: string}
      */
-    private function probeAi(): array
+    private function probeAi(AiGateway $ai): array
     {
-        $baseUrl = config('services.ai.base_url');
-        $model = config('services.ai.model');
-
-        if (blank($baseUrl) || blank($model)) {
+        if (! $ai->configured()) {
             return ['status' => 'not_configured', 'label' => 'Not configured', 'detail' => 'Add an AI endpoint and model.'];
         }
 
         try {
-            $response = Http::connectTimeout(2)->timeout(4)->acceptJson()->get(rtrim($baseUrl, '/').'/models');
+            $response = $ai->models();
+            $model = $ai->model();
 
-            return $response->successful()
-                ? ['status' => 'ready', 'label' => 'Ready', 'detail' => 'AI endpoint is reachable.']
-                : ['status' => 'unreachable', 'label' => 'Needs attention', 'detail' => 'The AI endpoint returned an unavailable response.'];
+            return [
+                'status' => 'ready',
+                'label' => 'Ready',
+                'detail' => sprintf('%s · %s', $ai->provider(), $model),
+                'model' => $model,
+                'available_models' => implode(',', $ai->availableModels()),
+                'remote_model_count' => (string) count($response['data'] ?? []),
+            ];
         } catch (\Throwable) {
             return ['status' => 'unreachable', 'label' => 'Offline', 'detail' => 'Start the configured AI service to enable assistance.'];
         }

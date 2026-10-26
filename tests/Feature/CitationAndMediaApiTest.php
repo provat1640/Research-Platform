@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mcp\Tools\ProjectContextTool;
 use App\Models\Citation;
 use App\Models\ResearchProject;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Mcp\Request;
 use Tests\TestCase;
 
 class CitationAndMediaApiTest extends TestCase
@@ -151,5 +153,93 @@ class CitationAndMediaApiTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.editor', 'Active Writer');
         $response->assertJsonPath('data.section', 'Methodology');
+    }
+
+    public function test_can_export_citations_as_bibtex_json(): void
+    {
+        $user = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $user->id,
+            'title' => 'Export BibTeX Project',
+        ]);
+        $project->members()->attach($user->id, ['role' => 'student']);
+
+        Citation::factory()->create([
+            'research_project_id' => $project->id,
+            'key' => 'turing1950',
+            'title' => 'Computing Machinery and Intelligence',
+            'authors' => 'Turing, A. M.',
+            'year' => '1950',
+            'source' => 'Mind, 59(236), 433-460',
+            'doi' => '10.1093/mind/LIX.236.433',
+        ]);
+
+        $response = $this->actingAs($user)->getJson("/api/v1/projects/{$project->id}/citations/export");
+
+        $response->assertOk();
+        $response->assertJsonPath('count', 1);
+        $this->assertStringContainsString('@article{turing1950,', $response->json('bibtex'));
+        $this->assertStringContainsString('author = {Turing, A. M.}', $response->json('bibtex'));
+        $this->assertStringContainsString('doi = {10.1093/mind/LIX.236.433}', $response->json('bibtex'));
+    }
+
+    public function test_can_export_citations_as_downloadable_bib_file(): void
+    {
+        $user = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $user->id,
+            'title' => 'Download BibTeX Project',
+        ]);
+        $project->members()->attach($user->id, ['role' => 'student']);
+
+        Citation::factory()->create([
+            'research_project_id' => $project->id,
+            'key' => 'shannon1948',
+            'title' => 'A Mathematical Theory of Communication',
+            'authors' => 'Shannon, C. E.',
+            'year' => '1948',
+        ]);
+
+        $response = $this->actingAs($user)->get("/api/v1/projects/{$project->id}/citations/export?download=1");
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/x-bibtex; charset=utf-8');
+        $this->assertStringContainsString('@article{shannon1948,', $response->getContent());
+    }
+
+    public function test_project_context_mcp_tool_includes_citations_and_media(): void
+    {
+        $user = User::factory()->create();
+        $project = ResearchProject::create([
+            'owner_id' => $user->id,
+            'title' => 'MCP Context Test',
+        ]);
+        $project->members()->attach($user->id, ['role' => 'student']);
+
+        Citation::factory()->create([
+            'research_project_id' => $project->id,
+            'key' => 'knuth1984',
+            'title' => 'Literate Programming',
+            'authors' => 'Knuth, D. E.',
+        ]);
+
+        $project->media()->create([
+            'title' => 'System Architecture Diagram',
+            'file_path' => 'https://example.com/arch.png',
+            'figure_number' => 1,
+            'caption' => 'Overview diagram',
+        ]);
+
+        $tool = new ProjectContextTool;
+        $request = new Request(['project_id' => $project->id]);
+        $response = $tool->handle($request);
+
+        $payload = json_decode((string) $response->content(), true);
+
+        $this->assertSame('MCP Context Test', $payload['project']['title']);
+        $this->assertCount(1, $payload['citations']);
+        $this->assertSame('knuth1984', $payload['citations'][0]['key']);
+        $this->assertCount(1, $payload['media']);
+        $this->assertSame('System Architecture Diagram', $payload['media'][0]['title']);
     }
 }
