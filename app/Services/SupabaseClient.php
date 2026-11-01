@@ -53,6 +53,7 @@ class SupabaseClient
                 'apikey' => (string) config('services.supabase.key'),
                 'Authorization' => 'Bearer '.config('services.supabase.key'),
             ])
+            ->connectTimeout((int) config('services.supabase.connect_timeout', 3))
             ->timeout((int) config('services.supabase.timeout', 10));
     }
 }

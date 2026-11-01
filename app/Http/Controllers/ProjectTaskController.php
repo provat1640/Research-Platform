@@ -39,8 +39,7 @@ class ProjectTaskController extends Controller
         $user = $request->user();
 
         abort_unless(
-            $user && ($task->created_by === $user->id
-                || $task->project->owner_id === $user->id
+            $user && ($task->project->owner_id === $user->id
                 || $task->project->members()->whereKey($user->id)->exists()),
             403,
             'You are not a member of this research project.'

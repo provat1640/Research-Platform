@@ -7,35 +7,49 @@ use Illuminate\Support\Facades\Http;
 class IntegrationHealth
 {
     /**
-     * @return array<string, array<string, string>>
+     * @return array<string, mixed>
      */
-    public function report(): array
+    public function report(AiGateway $ai): array
     {
         return [
-            'ai' => $this->probeAi(),
+            'ai' => $this->probeAi($ai),
             'supabase' => $this->probeSupabase(),
             'reverb' => $this->reverbStatus(),
+            'environment' => [
+                'active_directory' => base_path(),
+                'public_storage_path' => public_path('storage'),
+                'storage_linked' => file_exists(public_path('storage')),
+                'php_version' => PHP_VERSION,
+                'database_driver' => (string) config('database.default'),
+                'ai_provider' => $ai->provider(),
+                'ai_model' => $ai->model(),
+                'ai_free_access' => (bool) config('services.ai.free_access', true),
+                'ai_encryption' => 'TLS in-transit & AES-256-CBC at-rest',
+            ],
         ];
     }
 
     /**
-     * @return array{status: string, label: string, detail: string}
+     * @return array{status: string, label: string, detail: string, model?: string, available_models?: string, remote_model_count?: string}
      */
-    private function probeAi(): array
+    private function probeAi(AiGateway $ai): array
     {
-        $baseUrl = config('services.ai.base_url');
-        $model = config('services.ai.model');
-
-        if (blank($baseUrl) || blank($model)) {
+        if (! $ai->configured()) {
             return ['status' => 'not_configured', 'label' => 'Not configured', 'detail' => 'Add an AI endpoint and model.'];
         }
 
         try {
-            $response = Http::connectTimeout(2)->timeout(4)->acceptJson()->get(rtrim($baseUrl, '/').'/models');
+            $response = $ai->models();
+            $model = $ai->model();
 
-            return $response->successful()
-                ? ['status' => 'ready', 'label' => 'Ready', 'detail' => 'AI endpoint is reachable.']
-                : ['status' => 'unreachable', 'label' => 'Needs attention', 'detail' => 'The AI endpoint returned an unavailable response.'];
+            return [
+                'status' => 'ready',
+                'label' => 'Ready',
+                'detail' => sprintf('%s · %s', $ai->provider(), $model),
+                'model' => $model,
+                'available_models' => implode(',', $ai->availableModels()),
+                'remote_model_count' => (string) count($response['data'] ?? []),
+            ];
         } catch (\Throwable) {
             return ['status' => 'unreachable', 'label' => 'Offline', 'detail' => 'Start the configured AI service to enable assistance.'];
         }

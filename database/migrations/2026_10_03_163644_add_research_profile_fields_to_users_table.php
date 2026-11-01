@@ -40,6 +40,10 @@ return new class extends Migration
             if (Schema::hasColumn('users', 'is_teacher')) {
                 $table->dropColumn('is_teacher');
             }
+
+            if (Schema::hasColumn('users', 'trial_ends_at')) {
+                $table->dropColumn('trial_ends_at');
+            }
         });
     }
 };

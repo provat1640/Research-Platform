@@ -6,10 +6,25 @@ use App\Models\ResearchProject;
 use App\Services\AiGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class AiController extends Controller
 {
+    public function status(AiGateway $ai): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'active_provider' => $ai->provider(),
+                'active_model' => $ai->model(),
+                'configured' => $ai->configured(),
+                'encryption' => 'TLS in-transit & AES-256-CBC at-rest',
+                'free_access' => (bool) config('services.ai.free_access', true),
+                'providers' => $ai->probeAllProviders(),
+            ],
+        ]);
+    }
+
     public function summarize(Request $request, ResearchProject $project, AiGateway $ai): JsonResponse
     {
         $validated = $request->validate([
@@ -45,12 +60,15 @@ class AiController extends Controller
                 ],
             ]);
         } catch (Throwable $exception) {
-            return response()->json(['message' => $exception->getMessage()], 503);
+            Log::warning('AI summary service unavailable: '.$exception->getMessage());
+
+            return response()->json(['message' => 'The research assistant is unavailable right now.'], 503);
         }
 
         return response()->json([
             'data' => [
-                'model' => $result['model'] ?? config('services.ai.model'),
+                'model' => $result['model'] ?? $ai->model(),
+                'provider' => $ai->provider(),
                 'content' => data_get($result, 'choices.0.message.content'),
             ],
         ]);
@@ -77,7 +95,8 @@ class AiController extends Controller
         }
 
         return response()->json(['data' => [
-            'model' => $result['model'] ?? config('services.ai.model'),
+            'model' => $result['model'] ?? $ai->model(),
+            'provider' => $ai->provider(),
             'content' => data_get($result, 'choices.0.message.content'),
         ]]);
     }

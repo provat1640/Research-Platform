@@ -21,11 +21,14 @@ class CheckAiAccess
             return response()->json(['message' => 'Authentication is required for research AI tools.'], 401);
         }
 
-        if (! $user->onTrial() && ! $user->subscribed('premium_ai_tier')) {
-            return response()->json([
-                'status' => 'access_denied',
-                'message' => 'Start a trial or activate the premium research AI tier to continue.',
-            ], 403);
+        // When free access is enabled (default), all authenticated researchers can freely use AI
+        if (! config('services.ai.free_access', true)) {
+            if (! $user->onTrial() && ! $user->subscribed('premium_ai_tier')) {
+                return response()->json([
+                    'status' => 'access_denied',
+                    'message' => 'Start a trial or activate the premium research AI tier to continue.',
+                ], 403);
+            }
         }
 
         return $next($request);
