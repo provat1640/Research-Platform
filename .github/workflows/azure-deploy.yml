@@ -2,7 +2,7 @@ name: 🚀 Deploy Co-Auth to Azure App Service
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "DataBase" ]
   workflow_dispatch:
 
 jobs:

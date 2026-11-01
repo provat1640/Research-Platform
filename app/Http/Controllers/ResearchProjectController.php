@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Core\Architecture\ArchitectureSecurityVault;
 use App\Events\DocumentVersionCreated;
 use App\Models\ResearchProject;
 use App\Models\User;
@@ -223,6 +224,13 @@ class ResearchProjectController extends Controller
             'author' => $version->author->name,
             'created_at' => $version->created_at,
         ]], 201);
+    }
+
+    public function auditArchitecture(ResearchProject $project, ArchitectureSecurityVault $vault): JsonResponse
+    {
+        $audit = $vault->auditProjectArchitecture($project);
+
+        return response()->json(['data' => $audit]);
     }
 
     /**

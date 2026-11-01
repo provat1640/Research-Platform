@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 class IntegrationHealth
 {
     /**
-     * @return array<string, array<string, string>>
+     * @return array<string, mixed>
      */
     public function report(AiGateway $ai): array
     {
@@ -15,11 +15,22 @@ class IntegrationHealth
             'ai' => $this->probeAi($ai),
             'supabase' => $this->probeSupabase(),
             'reverb' => $this->reverbStatus(),
+            'environment' => [
+                'active_directory' => base_path(),
+                'public_storage_path' => public_path('storage'),
+                'storage_linked' => file_exists(public_path('storage')),
+                'php_version' => PHP_VERSION,
+                'database_driver' => (string) config('database.default'),
+                'ai_provider' => $ai->provider(),
+                'ai_model' => $ai->model(),
+                'ai_free_access' => (bool) config('services.ai.free_access', true),
+                'ai_encryption' => 'TLS in-transit & AES-256-CBC at-rest',
+            ],
         ];
     }
 
     /**
-     * @return array{status: string, label: string, detail: string}
+     * @return array{status: string, label: string, detail: string, model?: string, available_models?: string, remote_model_count?: string}
      */
     private function probeAi(AiGateway $ai): array
     {

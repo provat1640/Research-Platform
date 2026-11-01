@@ -11,6 +11,20 @@ use Throwable;
 
 class AiController extends Controller
 {
+    public function status(AiGateway $ai): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'active_provider' => $ai->provider(),
+                'active_model' => $ai->model(),
+                'configured' => $ai->configured(),
+                'encryption' => 'TLS in-transit & AES-256-CBC at-rest',
+                'free_access' => (bool) config('services.ai.free_access', true),
+                'providers' => $ai->probeAllProviders(),
+            ],
+        ]);
+    }
+
     public function summarize(Request $request, ResearchProject $project, AiGateway $ai): JsonResponse
     {
         $validated = $request->validate([

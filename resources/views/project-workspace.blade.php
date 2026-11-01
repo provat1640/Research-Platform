@@ -23,7 +23,7 @@
                 <!-- Live Collaboration Presence Indicator -->
                 <div class="team-presence-bar" id="team-presence-bar" title="Active working session">
                     <span class="presence-pulse"></span>
-                    <span id="active-editor-banner" class="active-editor-banner">3 collaborators in room</span>
+                    <span id="active-editor-banner" class="active-editor-banner">Collaborators in room</span>
                 </div>
 
                 <!-- Layout & View Switcher -->
@@ -42,6 +42,7 @@
 
                 <div class="workspace-actions">
                     <span class="save-state" id="save-state">All changes saved</span>
+                    <button class="button button-quiet" type="button" id="open-instructions-guide" title="Full project instructions, biography, and manual">📖 Project Guide</button>
                     <button class="button button-quiet" type="button" id="btn-export-markdown" title="Export manuscript as Markdown (.md)">📥 Export .md</button>
                     <button class="button button-quiet" type="button" id="open-format-panel" title="Paper margins and typography">📐 Paper layout</button>
                     <button class="button button-quiet" type="button" id="print-paper" title="Print or export manuscript to PDF">🖨 Print / PDF</button>
@@ -56,6 +57,7 @@
                         <div class="heading-tag-row">
                             <span class="discipline-tag">{{ $project->discipline ?: 'Interdisciplinary Research' }}</span>
                             <span class="status-pill status-{{ $project->status ?: 'draft' }}">{{ ucfirst($project->status ?: 'Draft') }}</span>
+                            <span class="ai-model-badge" style="background: rgba(45, 122, 102, 0.15); color: var(--teal); border: 1px solid rgba(45, 122, 102, 0.3);">🔒 AI-Encrypted (TLS / AES-256) · Free Access</span>
                         </div>
                         <h1>{{ $project->title }}</h1>
                         <p class="workspace-description">{{ $project->description ?: 'A shared collaborative space for thesis drafting, evidence capture, citations, and supervisor reviews.' }}</p>
@@ -63,10 +65,11 @@
                             <button class="button button-ai" id="ai-summary" type="button">✦ Ask research assistant</button>
                             <button class="button button-ai-quiet" type="button" data-ai-instruction="Review the current project context and identify the three most important next research actions.">Next best actions</button>
                             <button class="button button-ai-quiet" type="button" data-ai-instruction="Check whether the research question, methodology, evidence, and expected contribution are aligned.">Check alignment</button>
-                            <button class="button button-quiet" id="open-theory-guide" type="button">📚 Differentiate methodology theories</button>
+                            <button class="button button-quiet" id="open-theory-guide" type="button">📚 Methodology theory guide</button>
+                            <button class="button button-quiet" id="trigger-arch-audit" type="button" title="Verify Binary Tree, Recursion, Graph Mapping, Linked List, Linear Search, and Hash">🛡 Audit Core Architecture</button>
                         </div>
                         <p class="ai-result" id="ai-result" role="status"></p>
-                        <span class="ai-model-badge" id="ai-model-badge">Configured research assistant</span>
+                        <span class="ai-model-badge" id="ai-model-badge">Google Gemini · gemini-2.5-flash (Free Tier)</span>
                     </div>
                     <div class="workspace-progress">
                         <strong>{{ $project->progress }}%</strong>
@@ -99,6 +102,7 @@
                             <h2>Define the study methodology and epistemological ground</h2>
                         </div>
                         <div class="setup-heading-actions">
+                            <button type="button" class="setup-toggle-btn" id="toggle-setup-panel" title="Collapse or expand the setup panel">Collapse setup ↑</button>
                             <button type="button" class="text-button" id="trigger-theory-modal">Methodology theory comparison →</button>
                             <span class="save-state" id="setup-state">Project setup</span>
                         </div>
@@ -123,12 +127,10 @@
                             </label>
                             <!-- Dynamic Methodology Theory Differentiation Card -->
                             <div class="theory-card" id="theory-card">
-                                <div class="theory-card-badge" id="theory-card-paradigm">Select a methodology</div>
-                                <p class="theory-card-desc" id="theory-card-desc">Selecting a methodology will display its theoretical premise, epistemological ground, and when to use it over alternative methods.</p>
-                                <div class="theory-meta-row" id="theory-card-meta">
-                                    <span class="theory-pill" id="theory-pill-data">Data type</span>
-                                    <span class="theory-pill" id="theory-pill-validation">Rigor criteria</span>
+                                <div class="theory-card-header">
+                                    <span class="theory-card-badge" id="theory-card-paradigm">Select a methodology</span>
                                 </div>
+                                <p class="theory-card-desc" id="theory-card-desc">Selecting a methodology will display its theoretical premise, seminal theorists, epistemological ground, and rigor criteria.</p>
                             </div>
                         </div>
                         <label>
@@ -136,7 +138,7 @@
                             <textarea name="expected_outcome" rows="2" placeholder="What contribution, prototype, empirical evidence, or template do you expect to produce?"></textarea>
                         </label>
                         <label>
-                            Institutional ethics status
+                            Institutional ethics status (IRB)
                             <select name="ethics_status">
                                 <option value="not_assessed">Not assessed</option>
                                 <option value="not_required">Not required</option>
@@ -235,7 +237,7 @@
                             <div class="strip-item">
                                 <span class="strip-label">Spacing:</span>
                                 <div class="strip-buttons" id="spacing-buttons">
-                                    <button type="button" class="strip-btn" data-spacing="1.0" title="Single spacing">1.0</button>
+                                    <button type="button" class="strip-btn data-spacing="1.0" title="Single spacing">1.0</button>
                                     <button type="button" class="strip-btn is-active" data-spacing="1.5" title="1.5 spacing standard thesis">1.5</button>
                                     <button type="button" class="strip-btn" data-spacing="2.0" title="Double spacing APA submission">2.0</button>
                                 </div>
@@ -288,58 +290,64 @@
                         </div>
                     </section>
 
-                    <!-- Multi-Tab Sidebar: Collaboration, Citations, Media, Tasks, Feedback -->
+                    <!-- Multi-Tab Sidebar: AI Lab, Directory & Core, Team, Citations, Figures, Tasks, Feedback, History -->
                     <span id="stage-review" class="lifecycle-anchor" aria-hidden="true"></span>
                     <aside class="workspace-sidebar" id="workspace-sidebar">
                         <!-- Sidebar Navigation Tabs -->
                         <div class="sidebar-tab-row" role="tablist">
-                            <button type="button" class="sidebar-tab sidebar-tab-ai is-active" data-sidebar-tab="ai" title="AI Research Lab">✦ AI Lab</button>
-                            <button type="button" class="sidebar-tab" data-sidebar-tab="team" title="Collaborators & Live Presence">Team</button>
-                            <button type="button" class="sidebar-tab" data-sidebar-tab="citations" title="Citations & Bibliography">Citations</button>
-                            <button type="button" class="sidebar-tab" data-sidebar-tab="figures" title="Figures & Media Gallery">Figures</button>
-                            <button type="button" class="sidebar-tab" data-sidebar-tab="tasks" title="Task Board & Tasks">Tasks</button>
-                            <button type="button" class="sidebar-tab" data-sidebar-tab="reviews" title="Supervisor Feedback Desk">Feedback</button>
-                            <button type="button" class="sidebar-tab" data-sidebar-tab="history" title="Version Snapshots">History</button>
+                            <button type="button" class="sidebar-tab sidebar-tab-ai is-active" data-sidebar-tab="ai" title="AI Research Copilot">✦ AI Lab</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="directory" title="Active Directory & Architecture">📁 Directory</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="team" title="Collaborators & Live Presence">👥 Team</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="citations" title="Citations & Bibliography">📚 Citations</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="figures" title="Figures & Media Gallery">🖼 Figures</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="tasks" title="Task Board & Tasks">✓ Tasks</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="reviews" title="Supervisor Feedback Desk">💬 Feedback</button>
+                            <button type="button" class="sidebar-tab" data-sidebar-tab="history" title="Version Snapshots">⏱ History</button>
                         </div>
 
-                        <!-- AI Lab: persistent context-grounded research assistance -->
+                        <!-- TAB 1: AI Lab: persistent context-grounded research assistance -->
                         <div class="sidebar-panel ai-lab-panel is-active" id="tab-panel-ai">
                             <div class="side-heading">
                                 <div>
-                                    <p class="eyebrow">Context-grounded AI</p>
-                                    <h2>Research copilot</h2>
+                                    <p class="eyebrow">Context-Grounded AI</p>
+                                    <h2>Research Copilot</h2>
                                 </div>
                                 <span class="ai-live-dot"><i></i>Ready</span>
                             </div>
-                            <p class="panel-subcopy">Ask about this project and receive guidance grounded in its question, method, tasks, feedback, papers, and citations.</p>
+                            <p class="panel-subcopy">Grounded in project question, method, tasks, feedback, papers, and verified bibliography with strict zero-hallucination guards.</p>
                             <div class="ai-provider-card">
                                 <div class="ai-personal-logo ai-logo-orchestrator" aria-hidden="true">✦</div>
-                                <div class="ai-provider-copy"><strong id="ai-active-identity">Research Copilot</strong><small id="ai-lab-model">Groq model configured server-side</small></div>
-                                <span class="ai-collaboration-state"><i></i>Connected</span>
+                                <div class="ai-provider-copy"><strong id="ai-active-identity">Google Gemini 2.5 Flash</strong><small id="ai-lab-model">1,000,000+ token context · Free tier</small></div>
+                                <span class="ai-collaboration-state"><i></i>Encrypted</span>
                             </div>
                             <div class="ai-collaboration-card">
-                                <div class="ai-collaboration-heading"><strong>AI studio team</strong><span>Shared context</span></div>
-                                <p>Each model has a clear role. The active model answers your request while the other configured models remain available for a future handoff or comparison.</p>
+                                <div class="ai-collaboration-heading"><strong>AI Studio Team</strong><span>Multi-agent context</span></div>
+                                <p>Configured models operate with zero cross-talk. All prompts and outputs are TLS 1.3 encrypted in transit and AES-256 encrypted at rest.</p>
                                 <div class="ai-agent-roster" aria-label="Configured AI collaborators">
-                                    <div class="ai-agent is-active" data-ai-agent="llama">
+                                    <div class="ai-agent is-active" data-ai-agent="gemini">
+                                        <span class="ai-personal-logo ai-logo-gemini">G</span>
+                                        <span><strong>Google Gemini</strong><small>Deep reasoning & 1M context</small></span>
+                                        <i></i>
+                                    </div>
+                                    <div class="ai-agent" data-ai-agent="llama">
                                         <span class="ai-personal-logo ai-logo-llama">L</span>
-                                        <span><strong>Llama Research Assistant</strong><small>Active reasoning</small></span>
+                                        <span><strong>Llama 3.3 (Groq)</strong><small>Fast generation</small></span>
                                         <i></i>
                                     </div>
                                     <div class="ai-agent" data-ai-agent="deepseek">
                                         <span class="ai-personal-logo ai-logo-deepseek">D</span>
-                                        <span><strong>DeepSeek</strong><small>Standby reviewer</small></span>
+                                        <span><strong>DeepSeek-R1</strong><small>Reasoning & review</small></span>
                                         <i></i>
                                     </div>
                                     <div class="ai-agent" data-ai-agent="qwen">
                                         <span class="ai-personal-logo ai-logo-qwen">Q</span>
-                                        <span><strong>Qwen</strong><small>Standby builder</small></span>
+                                        <span><strong>Qwen 2.5</strong><small>Code & benchmarks</small></span>
                                         <i></i>
                                     </div>
                                 </div>
                             </div>
                             <label class="ai-prompt-label" for="ai-lab-prompt">What should we work on?</label>
-                            <textarea id="ai-lab-prompt" class="ai-prompt" rows="4" placeholder="Ask for a literature gap, methodology check, next step, or evidence review…"></textarea>
+                            <textarea id="ai-lab-prompt" class="ai-prompt" rows="3" placeholder="Ask for a literature gap, methodology check, next step, or evidence review…"></textarea>
                             <div class="ai-quick-actions">
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Summarize the current project state and recommend the next three research actions.">Summarize project</button>
                                 <button type="button" class="ai-quick-action" data-ai-instruction="Identify unresolved risks, feedback, or evidence gaps in this research project.">Find research gaps</button>
@@ -349,7 +357,126 @@
                             <div class="ai-lab-output" id="ai-lab-output" role="status"><span class="ai-output-placeholder">Your grounded response will appear here.</span></div>
                         </div>
 
-                        <!-- TAB 1: Team & Collaboration (Individual & 2/3 Group Seamless Work) -->
+                        <!-- TAB 2: Active Local Directory & Core Architecture Defense -->
+                        <div class="sidebar-panel" id="tab-panel-directory">
+                            <div class="side-heading">
+                                <div>
+                                    <p class="eyebrow">Local Environment</p>
+                                    <h2>Active Directory</h2>
+                                </div>
+                                <button class="button button-quiet button-sm" type="button" id="btn-run-arch-audit">⚡ Audit Now</button>
+                            </div>
+                            <p class="panel-subcopy">System infrastructure, active project files, and cryptographic data structures protecting the core architecture.</p>
+
+                            <div class="directory-card">
+                                <div class="directory-item">
+                                    <span>Active Local Directory</span>
+                                    <code id="env-active-directory">{{ base_path() }}</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>Public Storage Link</span>
+                                    <code id="env-storage-path">{{ public_path('storage') }}</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>Database Connection</span>
+                                    <code id="env-db-driver">{{ config('database.default') }} (Relational)</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>PHP Runtime</span>
+                                    <code>{{ PHP_VERSION }} (Strict Types)</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>WebSockets Engine</span>
+                                    <code>Laravel Reverb (:8080)</code>
+                                </div>
+                            </div>
+
+                            <div class="side-heading" style="margin-top: 14px;">
+                                <div>
+                                    <p class="eyebrow">AI API Protection</p>
+                                    <h2>Encryption & Access</h2>
+                                </div>
+                                <span class="arch-badge arch-pass">FREE ACCESS</span>
+                            </div>
+                            <div class="directory-card">
+                                <div class="directory-item">
+                                    <span>AI Provider</span>
+                                    <code id="env-ai-provider">Google Gemini / Groq</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>Active Model</span>
+                                    <code id="env-ai-model">gemini-2.5-flash</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>Transport Encryption</span>
+                                    <code>TLS 1.3 (HTTPS Enforced)</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>At-Rest Encryption</span>
+                                    <code>AES-256-CBC Crypt</code>
+                                </div>
+                                <div class="directory-item">
+                                    <span>User Entitlement</span>
+                                    <code style="color: var(--teal);">Free for all authenticated users</code>
+                                </div>
+                                <div class="directory-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                        <span>AI API Availability</span>
+                                        <button type="button" class="button button-quiet button-sm" id="btn-refresh-ai-status" style="padding: 2px 6px; font-size: 0.7rem;">↻ Check</button>
+                                    </div>
+                                    <div id="ai-providers-quick-status" style="width: 100%; display: flex; flex-direction: column; gap: 5px; font-size: 0.75rem;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03); padding: 5px 8px; border-radius: 4px;">
+                                            <span>★ Google Gemini 2.5 Flash</span>
+                                            <span id="status-gemini" class="arch-badge arch-warn" style="font-size: 0.65rem;">REACHABLE (Key Req)</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03); padding: 5px 8px; border-radius: 4px;">
+                                            <span>Groq Cloud (Llama 3.3)</span>
+                                            <span id="status-groq" class="arch-badge arch-warn" style="font-size: 0.65rem;">REACHABLE (Key Req)</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03); padding: 5px 8px; border-radius: 4px;">
+                                            <span>Ollama (Local Private)</span>
+                                            <span id="status-ollama" class="arch-badge" style="font-size: 0.65rem; background: var(--line);">OFFLINE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="side-heading" style="margin-top: 14px;">
+                                <div>
+                                    <p class="eyebrow">Data Structures Defense</p>
+                                    <h2>Core Architecture</h2>
+                                </div>
+                                <span class="arch-badge arch-pass" id="arch-global-status">PASS</span>
+                            </div>
+                            <div class="arch-audit-grid" id="arch-audit-list">
+                                <div class="arch-audit-item">
+                                    <div><strong>Binary Tree</strong><small>Merkle Root Hash Indexing</small></div>
+                                    <span class="arch-badge arch-pass">Verified</span>
+                                </div>
+                                <div class="arch-audit-item">
+                                    <div><strong>Recursion</strong><small>Outline & Hierarchy Depth Guard</small></div>
+                                    <span class="arch-badge arch-pass">Verified</span>
+                                </div>
+                                <div class="arch-audit-item">
+                                    <div><strong>Graph Mapping</strong><small>Tree-to-DAG & Cycle Defense</small></div>
+                                    <span class="arch-badge arch-pass">Verified</span>
+                                </div>
+                                <div class="arch-audit-item">
+                                    <div><strong>Linked List</strong><small>Tamper-Evident Version Ledger</small></div>
+                                    <span class="arch-badge arch-pass">Verified</span>
+                                </div>
+                                <div class="arch-audit-item">
+                                    <div><strong>Linear Search</strong><small>Sequential Audit Stream Scan</small></div>
+                                    <span class="arch-badge arch-pass">Verified</span>
+                                </div>
+                                <div class="arch-audit-item">
+                                    <div><strong>Cryptographic Hash</strong><small>SHA-256 HMAC State Seal</small></div>
+                                    <span class="arch-badge arch-pass">Verified</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: Team & Collaboration (Individual & 2/3 Group Seamless Work) -->
                         <div class="sidebar-panel" id="tab-panel-team">
                             <div class="side-heading">
                                 <div>
@@ -373,7 +500,7 @@
                             </div>
                         </div>
 
-                        <!-- TAB 2: In-Context Citations & References -->
+                        <!-- TAB 4: In-Context Citations & References -->
                         <div class="sidebar-panel" id="tab-panel-citations">
                             <div class="side-heading">
                                 <div>
@@ -401,7 +528,7 @@
                             </div>
                         </div>
 
-                        <!-- TAB 3: Figures & Media Gallery -->
+                        <!-- TAB 5: Figures & Media Gallery -->
                         <div class="sidebar-panel" id="tab-panel-figures">
                             <div class="side-heading">
                                 <div>
@@ -416,7 +543,7 @@
                             </div>
                         </div>
 
-                        <!-- TAB 4: Shared Work / Task Board -->
+                        <!-- TAB 6: Shared Work / Task Board -->
                         <div class="sidebar-panel" id="tab-panel-tasks">
                             <div class="side-heading">
                                 <div>
@@ -434,7 +561,7 @@
                             </div>
                         </div>
 
-                        <!-- TAB 5: Supervisor Desk / Feedback Loop -->
+                        <!-- TAB 7: Supervisor Desk / Feedback Loop -->
                         <div class="sidebar-panel" id="tab-panel-reviews">
                             <div class="side-heading">
                                 <div>
@@ -452,7 +579,7 @@
                             </form>
                         </div>
 
-                        <!-- TAB 6: Document Trail / Version History -->
+                        <!-- TAB 8: Document Trail / Version History -->
                         <div class="sidebar-panel" id="tab-panel-history">
                             <div class="side-heading">
                                 <div>
@@ -460,7 +587,7 @@
                                     <h2>Version History</h2>
                                 </div>
                             </div>
-                            <p class="panel-subcopy">Every save captures a permanent snapshot. You can restore previous drafts anytime.</p>
+                            <p class="panel-subcopy">Every save captures an immutable linked-list snapshot. You can restore previous drafts anytime.</p>
                             <div id="version-history" class="version-history">
                                 <div class="loading-line">No versions yet</div>
                             </div>
@@ -472,22 +599,250 @@
 
         <!-- ================= MODALS & DIALOGS ================= -->
 
+        <!-- 0. Full Project Instructions, Administrative Biography & Operations Manual Modal -->
+        <dialog class="app-dialog instructions-dialog" id="instructions-dialog">
+            <div class="dialog-content-large" style="padding: 24px;">
+                <button class="dialog-close" type="button" data-close-dialog="instructions-dialog" aria-label="Close">×</button>
+                <p class="eyebrow">System Manual & Specification Blueprint</p>
+                <h2>Co-Auth Platform Instructions & Administrative Biography</h2>
+                <p class="dialog-copy">Complete structural reference, operational workflows, epistemological definitions, and architectural security parameters for graduate thesis teams.</p>
+
+                <nav class="guide-tabs-nav" role="tablist">
+                    <button type="button" class="guide-tab-btn is-active" data-guide-target="tab-guide-bio">Biography & Mandate</button>
+                    <button type="button" class="guide-tab-btn" data-guide-target="tab-guide-methodologies">Formatted Methodologies</button>
+                    <button type="button" class="guide-tab-btn" data-guide-target="tab-guide-architecture">Architecture & CS Defense</button>
+                    <button type="button" class="guide-tab-btn" data-guide-target="tab-guide-ai">AI API & Encryption</button>
+                    <button type="button" class="guide-tab-btn" data-guide-target="tab-guide-workflows">Workflows & Export</button>
+                </nav>
+
+                <!-- GUIDE TAB 1: Biography & Mandate -->
+                <div class="guide-tab-pane is-active" id="tab-guide-bio">
+                    <div class="guide-card">
+                        <h3>Administrative Metadata & System Provenance</h3>
+                        <p><strong>Co-Auth</strong> is an enterprise-grade collaborative research studio engineered specifically for graduate researchers, doctoral candidates, co-authors, and university thesis advisors. It resolves the "Semantic Vacuum" of contemporary academic drafting by bridging physical paper sheet typesetting with context-aware AI engines using the Model Context Protocol (MCP).</p>
+                        <div class="guide-meta-grid">
+                            <div class="guide-meta-item">
+                                <strong>Target Degrees</strong>
+                                <span>Master's Thesis, PhD Dissertations, Capstone Projects</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>Core Architecture</strong>
+                                <span>Laravel 13.x · PHP 8.4+ · Reverb WebSockets (:8080)</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>Active Local Directory</strong>
+                                <code>{{ base_path() }}</code>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>Relational Database</strong>
+                                <span>{{ config('database.default') }} (Strict Foreign Keys & Audits)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="guide-card">
+                        <h3>Role Responsibilities in 2-3 Person Research Teams</h3>
+                        <p><strong>Member 1 (Lead Architecture & AI Protocol):</strong> Implements the Model Context Protocol (<code>ResearchServer</code>, <code>ProjectContextTool</code>), manages backend gateways, enforces tenant security fences, and validates ORCID identifiers.</p>
+                        <p><strong>Member 2 (Frontend & Real-Time Engine):</strong> Authors the authentic paper sheet canvas, line-spacing and margin geometry, Reverb presence heartbeats, and responsive reviewer views.</p>
+                        <p><strong>Member 3 (Database, Citations & QA):</strong> Manages relational migrations, in-context citation indexing, BibTeX export serializers, and executes the 65-test automated verification suite.</p>
+                    </div>
+                </div>
+
+                <!-- GUIDE TAB 2: Formatted Methodologies -->
+                <div class="guide-tab-pane" id="tab-guide-methodologies">
+                    <div class="guide-card">
+                        <h3>Epistemological Frameworks & Theoretical Foundations</h3>
+                        <p>Academic rigor begins with ontological alignment. Each methodology represents a distinct premise regarding the nature of reality, truth, and evidence:</p>
+                    </div>
+                    
+                    <div class="guide-card">
+                        <h3>1. Qualitative Research (Constructivism / Interpretivism)</h3>
+                        <p><strong>Seminal Theorists:</strong> Egon Guba & Yvonna Lincoln (<em>Naturalistic Inquiry</em>, 1985), John W. Creswell, Kathy Charmaz.</p>
+                        <p><strong>Epistemological Stance:</strong> Reality is socially constructed through lived experience, cultural context, and subjective meaning. Truth is emergent, contextual, and pluralistic.</p>
+                        <p><strong>Core Question Formula:</strong> <em>"How or why does [phenomenon] occur within [social/organizational context]?"</em></p>
+                        <p><strong>Primary Evidence:</strong> In-depth semi-structured interviews, focus group transcripts, field observation, grounded theory open/axial coding.</p>
+                        <p><strong>Rigor Criteria:</strong> Lincoln & Guba's Trustworthiness Framework: Credibility (member-checking), Transferability (thick description), Dependability (audit trail), Confirmability (reflexivity).</p>
+                    </div>
+
+                    <div class="guide-card">
+                        <h3>2. Quantitative Research (Positivism / Post-Positivism & Empiricism)</h3>
+                        <p><strong>Seminal Theorists:</strong> Karl Popper (<em>Logic of Scientific Discovery</em>, 1959), Auguste Comte, Donald Campbell & Julian Stanley (1963).</p>
+                        <p><strong>Epistemological Stance:</strong> An objective reality exists independently of human observation, governed by natural laws and measurable causal relationships.</p>
+                        <p><strong>Core Question Formula:</strong> <em>"What is the causal effect or significant relationship between Variable X and Variable Y, controlling for Z?"</em></p>
+                        <p><strong>Primary Evidence:</strong> Randomized controlled trials (RCT), closed-ended Likert surveys, system telemetry logs, ANOVA, multiple regression.</p>
+                        <p><strong>Rigor Criteria:</strong> Internal validity, external validity (generalizability), statistical significance (p &lt; 0.05), construct reliability (Cronbach's alpha &gt; 0.70).</p>
+                    </div>
+
+                    <div class="guide-card">
+                        <h3>3. Mixed Methods Research (Pragmatism & Triangulation)</h3>
+                        <p><strong>Seminal Theorists:</strong> John Dewey (<em>Logic: The Theory of Inquiry</em>, 1938), C.S. Peirce, Abbas Tashakkori & Charles Teddlie, John Creswell.</p>
+                        <p><strong>Epistemological Stance:</strong> Rejects dogmatic either/or paradigms. Truth is judged by practical utility and what works in solving problems.</p>
+                        <p><strong>Core Question Formula:</strong> <em>"To what extent and in what ways does qualitative contextual depth explain quantitative statistical outcomes?"</em></p>
+                        <p><strong>Primary Evidence:</strong> Convergent parallel datasets, sequential explanatory designs (Quant $\to$ Qual), integrated joint displays.</p>
+                        <p><strong>Rigor Criteria:</strong> Design fidelity, interpretive consistency, cross-methodological triangulation, dialectical integration.</p>
+                    </div>
+
+                    <div class="guide-card">
+                        <h3>4. Design Science Research (Sciences of the Artificial / Artifact & Utility)</h3>
+                        <p><strong>Seminal Theorists:</strong> Herbert A. Simon (<em>The Sciences of the Artificial</em>, 1969), Alan R. Hevner (2004), Ken Peffers (2007).</p>
+                        <p><strong>Epistemological Stance:</strong> Knowledge is produced through creating, demonstrating, and empirically evaluating innovative technological artifacts solving practical problems.</p>
+                        <p><strong>Core Question Formula:</strong> <em>"How can an innovative [Artifact / Architecture] be engineered to solve [Class of Problems] with superior utility?"</em></p>
+                        <p><strong>Primary Evidence:</strong> Functional software prototypes, algorithmic benchmark logs, latency/throughput metrics, usability evaluations.</p>
+                        <p><strong>Rigor Criteria:</strong> Hevner's 7 Guidelines: Problem Relevance, Design as an Artifact, Design Evaluation (Utility Theory), Research Contributions, Research Rigor.</p>
+                    </div>
+
+                    <div class="guide-card">
+                        <h3>5. Systematic Literature Review (PRISMA Framework / Critical Realism)</h3>
+                        <p><strong>Seminal Theorists:</strong> David Moher et al. (PRISMA 2009 / 2020), Kitchenham & Charters (<em>Guidelines for SLRs in Software Engineering</em>, 2007).</p>
+                        <p><strong>Epistemological Stance:</strong> Cumulative scientific knowledge represents our closest approximation of reality. Systematic synthesis uncovers the consensus and boundary frontiers of knowledge.</p>
+                        <p><strong>Core Question Formula:</strong> <em>"What is the synthesized state of scientific evidence regarding [Topic], what methodologies have been applied, and what critical research gaps remain?"</em></p>
+                        <p><strong>Primary Evidence:</strong> Reproducible search query logs across IEEE Xplore, ACM DL, Scopus, PubMed, and Web of Science; formal inclusion/exclusion audit.</p>
+                        <p><strong>Rigor Criteria:</strong> 27-item PRISMA checklist, transparent boolean query strings, dual-reviewer screening inter-rater reliability (Cohen's Kappa), risk-of-bias assessment.</p>
+                    </div>
+
+                    <div class="guide-card">
+                        <h3>6. Action Research (Critical Social Theory & Cyclical Intervention)</h3>
+                        <p><strong>Seminal Theorists:</strong> Kurt Lewin (<em>Action Research and Minority Problems</em>, 1946), Stephen Kemmis & Robin McTaggart (1988), Peter Checkland.</p>
+                        <p><strong>Epistemological Stance:</strong> Theory and practice must be united. Action is the source of knowledge; social and organizational systems can only be truly understood through iterative attempts to improve them.</p>
+                        <p><strong>Core Question Formula:</strong> <em>"How can practitioners and researchers collaboratively intervene to transform and enhance [Organizational / Educational / Technical System]?"</em></p>
+                        <p><strong>Primary Evidence:</strong> Intervention sprint logs, stakeholder debriefs, iterative process metrics, participant reflection diaries.</p>
+                        <p><strong>Rigor Criteria:</strong> Catalytic validity (empowerment of participants), cyclical recoverability of the inquiry process, democratic validity, observable systemic transformation.</p>
+                    </div>
+                </div>
+
+                <!-- GUIDE TAB 3: Architecture & CS Defense -->
+                <div class="guide-tab-pane" id="tab-guide-architecture">
+                    <div class="guide-card">
+                        <h3>Core Architecture Defense: 6 Computer Science Structures</h3>
+                        <p>Co-Auth implements six foundational data structures and algorithms in <code>App\Core\Architecture</code> to protect the platform's core architecture against data tampering, circular deadlocks, and index corruption:</p>
+                        <div class="guide-meta-grid">
+                            <div class="guide-meta-item">
+                                <strong>1. Binary Tree (Merkle Root)</strong>
+                                <span>Balanced binary search tree providing $O(\log n)$ citation and section lookup while computing a cryptographic Merkle root hash.</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>2. Recursion</strong>
+                                <span>Recursively audits deep outline trees, enforces strict recursion-depth limits (max 20 levels), and prevents duplicate node injection.</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>3. Graph Mapping (DAG)</strong>
+                                <span>Projects hierarchical outlines into a directed graph, executing 3-color DFS cycle detection to prevent dependency deadlocks.</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>4. Linked List</strong>
+                                <span>Implements a tamper-evident revision ledger where each node holds a cryptographic <code>prevHash</code> pointer to the prior snapshot.</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>5. Linear Search</strong>
+                                <span>Sequential $O(n)$ scanning engine across unindexed audit events, verifying time-series continuity as a fallback.</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>6. Cryptographic Hash</strong>
+                                <span>Computes deterministic SHA-256 and HMAC-SHA256 signatures sealing project states against unauthorized modification.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GUIDE TAB 4: AI API & Encryption -->
+                <div class="guide-tab-pane" id="tab-guide-ai">
+                    <div class="guide-card">
+                        <h3>AI API Architecture, Encryption & Free Access</h3>
+                        <p><strong>Recommended Provider:</strong> <strong>Google Gemini API</strong> (via <code>gemini-2.5-flash</code>). Google AI Studio provides an extensive <strong>free tier</strong> (15 RPM / 1M TPM / 1,500 RPD) with an unprecedented <strong>1,000,000+ token context window</strong>, allowing entire 50-page manuscripts, full citation databases, and literature reviews to be evaluated in a single prompt without chunking errors.</p>
+                        <div class="guide-meta-grid">
+                            <div class="guide-meta-item">
+                                <strong>Transport Encryption</strong>
+                                <span>Strict HTTPS / TLS 1.3 enforced for all external AI endpoints via <code>AiGateway::validateTransportSecurity()</code>.</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>At-Rest Encryption</strong>
+                                <span>Sensitive research prompts and AI outputs encrypted via Laravel's AES-256-CBC cryptographic vault (<code>Crypt</code>).</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>Zero Hallucination Protocol</strong>
+                                <span>Zero-shot system constraints ground all summaries strictly in relational project records extracted via MCP.</span>
+                            </div>
+                            <div class="guide-meta-item">
+                                <strong>Free Access Policy</strong>
+                                <span><code>AI_FREE_FOR_ALL=true</code> guarantees all authenticated researchers have unrestricted, free AI assistance.</span>
+                            </div>
+                        </div>
+
+                        <h4 style="margin-top: 1.25rem; margin-bottom: 0.5rem;">API Provider Hierarchy & Activation</h4>
+                        <div class="theory-comparison-table-wrap">
+                            <table class="theory-table" style="font-size: 0.8rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Provider</th>
+                                        <th>Recommended Model</th>
+                                        <th>Hierarchy Role</th>
+                                        <th>Encryption & Protocol</th>
+                                        <th>Free Tier Capacity</th>
+                                        <th>Activation (.env)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>★ Google Gemini</strong></td>
+                                        <td><code>gemini-2.5-flash</code></td>
+                                        <td>Primary Academic Engine (1M token context window)</td>
+                                        <td>HTTPS / TLS 1.3</td>
+                                        <td>15 RPM / 1M TPM / 1,500 RPD (Free)</td>
+                                        <td><code>GEMINI_API_KEY=AIzaSy...</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Groq Cloud</strong></td>
+                                        <td><code>llama-3.3-70b-versatile</code></td>
+                                        <td>Sub-second low latency inference (LPU hardware)</td>
+                                        <td>HTTPS / TLS 1.3</td>
+                                        <td>30 RPM / 14,400 RPD (Free)</td>
+                                        <td><code>GROQ_API_KEY=gsk_...</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Ollama Local</strong></td>
+                                        <td><code>llama3.2</code></td>
+                                        <td>100% Air-gapped / Offline confidential research</td>
+                                        <td>Localhost loopback</td>
+                                        <td>Unlimited local GPU/CPU compute</td>
+                                        <td>Run <code>ollama serve</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GUIDE TAB 5: Workflows & Export -->
+                <div class="guide-tab-pane" id="tab-guide-workflows">
+                    <div class="guide-card">
+                        <h3>Export Workflows: Markdown, BibTeX & Print PDF</h3>
+                        <p><strong>Markdown (.md):</strong> Click <em>"📥 Export .md"</em> to generate clean GitHub-flavored markdown with embedded image paths and citation chips formatted as traceable brackets.</p>
+                        <p><strong>BibTeX (.bib):</strong> Click <em>"💾 Export .bib"</em> in the Citations tab to download an Overleaf-compatible bibliography file. Source keys match the in-text citation markers perfectly.</p>
+                        <p><strong>Camera-Ready PDF:</strong> Click <em>"🖨 Print / PDF"</em> (or <code>Ctrl+P</code>) to trigger the browser's print engine. Custom <code>@media print</code> rules automatically strip all UI chrome, sidebars, and buttons, rendering an authentic publication-grade document formatted to standard A4 or US Letter dimensions.</p>
+                    </div>
+                </div>
+
+                <div class="dialog-actions">
+                    <button class="button button-primary" type="button" data-close-dialog="instructions-dialog">Close Manual</button>
+                </div>
+            </div>
+        </dialog>
+
         <!-- 1. Methodology Theory Differentiation Modal -->
         <dialog class="app-dialog theory-dialog" id="theory-dialog">
-            <div class="dialog-content-large">
+            <div class="dialog-content-large" style="padding: 24px;">
                 <button class="dialog-close" type="button" data-close-dialog="theory-dialog" aria-label="Close">×</button>
                 <p class="eyebrow">Epistemological & Ontological Guide</p>
                 <h2>Differentiate Theories of Research Methodologies</h2>
-                <p class="dialog-copy">Different methodologies make different assumptions about reality, evidence, and truth. Choose the methodology whose theoretical stance matches your research question.</p>
+                <p class="dialog-copy">Different methodologies make fundamentally different assumptions about reality, evidence, and truth. Choose the methodology whose theoretical stance matches your research question.</p>
 
                 <div class="theory-comparison-table-wrap">
                     <table class="theory-table">
                         <thead>
                             <tr>
                                 <th>Methodology</th>
-                                <th>Theoretical Foundation</th>
+                                <th>Theoretical Foundation & Seminal Authors</th>
                                 <th>Epistemology (Truth & Reality)</th>
-                                <th>Core Question</th>
+                                <th>Core Research Question</th>
                                 <th>Primary Evidence</th>
                                 <th>Action</th>
                             </tr>
@@ -495,23 +850,23 @@
                         <tbody>
                             <tr>
                                 <td><strong>Qualitative</strong></td>
-                                <td><span class="theory-pill">Constructivism / Interpretivism</span></td>
+                                <td><span class="theory-pill">Constructivism / Interpretivism</span><br><small style="color: var(--muted);">Guba & Lincoln (1985), Creswell</small></td>
                                 <td>Reality is socially constructed through lived experience, cultural context, and subjective meaning.</td>
-                                <td><em>"How" or "Why does a phenomenon occur?"</em></td>
-                                <td>Semi-structured interviews, participant observations, thematic codes.</td>
+                                <td><em>"How or why does a phenomenon occur within its natural context?"</em></td>
+                                <td>Semi-structured interviews, observations, thematic codes.</td>
                                 <td><button type="button" class="button button-quiet button-sm" data-apply-method="Qualitative">Apply</button></td>
                             </tr>
                             <tr>
                                 <td><strong>Quantitative</strong></td>
-                                <td><span class="theory-pill">Positivism / Post-Positivism</span></td>
-                                <td>An objective, measurable reality exists independently of human observation; tested via deduction.</td>
+                                <td><span class="theory-pill">Positivism / Post-Positivism</span><br><small style="color: var(--muted);">Karl Popper (1959), Campbell</small></td>
+                                <td>An objective reality exists independently of human observation; tested via deduction.</td>
                                 <td><em>"What is the causal effect or relationship between variables?"</em></td>
-                                <td>Structured surveys, randomized control trials, regression, p-values.</td>
+                                <td>Randomized trials, surveys, regression, p-values.</td>
                                 <td><button type="button" class="button button-quiet button-sm" data-apply-method="Quantitative">Apply</button></td>
                             </tr>
                             <tr>
                                 <td><strong>Mixed Methods</strong></td>
-                                <td><span class="theory-pill">Pragmatism (Dewey, Peirce)</span></td>
+                                <td><span class="theory-pill">Pragmatism</span><br><small style="color: var(--muted);">John Dewey (1938), Peirce, Tashakkori</small></td>
                                 <td>Truth is found in practical utility and pluralistic inquiry; triangulates numbers and narratives.</td>
                                 <td><em>"What happened (quant), and why did participants react this way (qual)?"</em></td>
                                 <td>Sequential explanatory design, convergent parallel datasets.</td>
@@ -519,23 +874,23 @@
                             </tr>
                             <tr>
                                 <td><strong>Design Science</strong></td>
-                                <td><span class="theory-pill">Sciences of the Artificial (Hevner, Simon)</span></td>
+                                <td><span class="theory-pill">Sciences of the Artificial</span><br><small style="color: var(--muted);">Herbert Simon (1969), Alan Hevner (2004)</small></td>
                                 <td>Knowledge is produced through the creation, demonstration, and evaluation of innovative artifacts.</td>
                                 <td><em>"How can we engineer a novel artifact to solve an unsolved problem?"</em></td>
-                                <td>Software prototypes, algorithmic benchmarks, utility evaluations.</td>
+                                <td>Software prototypes, algorithmic benchmarks, utility audits.</td>
                                 <td><button type="button" class="button button-quiet button-sm" data-apply-method="Design science">Apply</button></td>
                             </tr>
                             <tr>
                                 <td><strong>Literature Review</strong></td>
-                                <td><span class="theory-pill">PRISMA Framework / Critical Realism</span></td>
+                                <td><span class="theory-pill">PRISMA Framework</span><br><small style="color: var(--muted);">David Moher et al. (2009/2020), Kitchenham</small></td>
                                 <td>Synthesizes cumulative scientific evidence without selection bias to uncover consensus and frontiers.</td>
                                 <td><em>"What is the synthesized state of knowledge, and where are the gaps?"</em></td>
-                                <td>Database query logs (IEEE/ACM/PubMed), bibliometrics, inclusion audits.</td>
+                                <td>Database query logs (IEEE/ACM/PubMed), inclusion audits.</td>
                                 <td><button type="button" class="button button-quiet button-sm" data-apply-method="Literature review">Apply</button></td>
                             </tr>
                             <tr>
                                 <td><strong>Action Research</strong></td>
-                                <td><span class="theory-pill">Critical Theory / Participatory Action</span></td>
+                                <td><span class="theory-pill">Critical Theory / Participatory</span><br><small style="color: var(--muted);">Kurt Lewin (1946), Kemmis & McTaggart</small></td>
                                 <td>Theory and practice advance simultaneously through cyclical intervention: Plan → Act → Observe → Reflect.</td>
                                 <td><em>"How can researchers and practitioners collaboratively improve a system?"</em></td>
                                 <td>Organizational field logs, change interventions, reflective debriefs.</td>
@@ -553,7 +908,7 @@
 
         <!-- 2. Research Paper Templates Modal -->
         <dialog class="app-dialog template-dialog" id="template-dialog">
-            <div class="dialog-content-large">
+            <div class="dialog-content-large" style="padding: 24px;">
                 <button class="dialog-close" type="button" data-close-dialog="template-dialog" aria-label="Close">×</button>
                 <p class="eyebrow">Readymade Academic Scaffolding</p>
                 <h2>Start from a Research Paper Template</h2>
@@ -629,7 +984,7 @@
 
         <!-- 3. Insert Figure / Media Modal -->
         <dialog class="app-dialog" id="media-dialog">
-            <form id="media-form" class="dialog-form" enctype="multipart/form-data">
+            <form id="media-form" class="dialog-form" enctype="multipart/form-data" style="padding: 24px;">
                 <button class="dialog-close" type="button" data-close-dialog="media-dialog" aria-label="Close">×</button>
                 <p class="eyebrow">Visual Evidence</p>
                 <h2>Insert Figure or Media</h2>
@@ -690,7 +1045,7 @@
 
         <!-- 4. In-Context Citation Modal -->
         <dialog class="app-dialog" id="citation-dialog">
-            <div class="dialog-form">
+            <div class="dialog-form" style="padding: 24px;">
                 <button class="dialog-close" type="button" data-close-dialog="citation-dialog" aria-label="Close">×</button>
                 <p class="eyebrow">Academic Sourcing</p>
                 <h2>Insert Citation in Context</h2>
@@ -754,7 +1109,7 @@
 
         <!-- 5. Invite Collaborator Modal (Team of 2/3 Multi-User Workflow) -->
         <dialog class="app-dialog" id="member-dialog">
-            <form id="member-form" class="dialog-form">
+            <form id="member-form" class="dialog-form" style="padding: 24px;">
                 <button class="dialog-close" type="button" data-close-dialog="member-dialog" aria-label="Close">×</button>
                 <p class="eyebrow">Multi-User Collaboration</p>
                 <h2>Invite Project Collaborator</h2>

@@ -1178,3 +1178,271 @@ body.layout-review .workspace-grid { grid-template-columns: 1.1fr 0.9fr; }
         min-width: 150px;
     }
 }
+
+
+/* ================= ENHANCED UI & ARCHITECTURAL STYLING ================= */
+
+/* Instructions & Biography Modal */
+.instructions-dialog {
+    width: min(940px, calc(100% - 30px));
+    max-height: 92vh;
+}
+.guide-tabs-nav {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 18px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+.guide-tab-btn {
+    background: none;
+    border: none;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.guide-tab-btn.is-active, .guide-tab-btn:hover {
+    color: var(--teal-dark);
+    background: #eef7f4;
+}
+.guide-tab-pane {
+    display: none;
+}
+.guide-tab-pane.is-active {
+    display: block;
+}
+.guide-card {
+    background: #fafcfb;
+    border: 1px solid #e3ece8;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+.guide-card h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--ink);
+}
+.guide-card p {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #495e63;
+    margin: 0 0 10px;
+}
+.guide-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+.guide-meta-item {
+    background: white;
+    border: 1px solid #e1ebe7;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+}
+.guide-meta-item strong {
+    display: block;
+    color: var(--teal-dark);
+    font-size: 10px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+    font-family: 'DM Mono', monospace;
+}
+
+/* Enhanced Methodology Theory Card */
+.theory-card {
+    background: #f7faf8;
+    border: 1px solid #dcece7;
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 12px;
+    transition: all .2s;
+    margin-top: 10px;
+}
+.theory-card.has-selection {
+    border-color: var(--teal);
+    background: #f0f8f5;
+    box-shadow: 0 4px 14px rgba(45, 122, 102, 0.08);
+}
+.theory-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.theory-card-badge {
+    font: 11px 'DM Mono', monospace;
+    font-weight: 700;
+    color: var(--teal-dark);
+    text-transform: uppercase;
+}
+.theory-theorists {
+    font-size: 11px;
+    color: #4b6b63;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+.theory-grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+.theory-grid-cell {
+    background: white;
+    border: 1px solid #e2ece8;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+}
+.theory-grid-cell strong {
+    display: block;
+    color: var(--ink);
+    font-size: 10px;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 3px;
+}
+.theory-formula-box {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: #eaf4f0;
+    border-left: 3px solid var(--teal);
+    font-size: 11px;
+    color: #21433b;
+    border-radius: 0 4px 4px 0;
+}
+
+/* Setup Panel Collapse */
+.setup-panel.is-collapsed .setup-form {
+    display: none;
+}
+.setup-toggle-btn {
+    background: none;
+    border: 1px solid #dcece7;
+    color: var(--teal-dark);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+.setup-toggle-btn:hover {
+    background: #eef7f4;
+}
+
+/* Directory & Core Architecture Panel */
+.directory-card {
+    background: #fafcfb;
+    border: 1px solid #e3ece8;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    font-size: 11px;
+}
+.directory-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #eef3f1;
+}
+.directory-item:last-child {
+    border-bottom: none;
+}
+.directory-item span {
+    color: var(--muted);
+}
+.directory-item code {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    background: #eaf1ee;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #1a3830;
+    word-break: break-all;
+}
+.arch-audit-grid {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+.arch-audit-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border: 1px solid #e2ece8;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+}
+.arch-badge {
+    font: 9px 'DM Mono', monospace;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+.arch-pass {
+    background: #d8efeb;
+    color: #1b5e50;
+}
+.arch-fail {
+    background: #fde8e8;
+    color: #9b1c1c;
+}
+
+/* AI Model Gemini Logo */
+.ai-logo-gemini {
+    background: linear-gradient(135deg, #1a73e8, #8ab4f8);
+    color: white;
+}
+
+/* Live Tech UI Dark Mode Overrides */
+.live-tech-ui .guide-card,
+.live-tech-ui .theory-card,
+.live-tech-ui .directory-card {
+    background: #141b17;
+    border-color: #27352d;
+    color: #d1ded7;
+}
+.live-tech-ui .theory-grid-cell,
+.live-tech-ui .guide-meta-item,
+.live-tech-ui .arch-audit-item {
+    background: #0e1310;
+    border-color: #233129;
+    color: #c0d1c8;
+}
+.live-tech-ui .theory-card.has-selection {
+    border-color: var(--teal);
+    background: #121c17;
+}
+.live-tech-ui .guide-tab-btn.is-active,
+.live-tech-ui .guide-tab-btn:hover {
+    color: var(--teal);
+    background: rgb(118 185 0 / 12%);
+}
+.live-tech-ui .theory-formula-box {
+    background: #16241d;
+    color: #a4e4cf;
+    border-left-color: var(--teal);
+}
+.live-tech-ui .directory-item code {
+    background: #1c2721;
+    color: #8ce1ca;
+}
+.live-tech-ui .setup-toggle-btn {
+    border-color: #27352d;
+    color: var(--teal);
+}
+.live-tech-ui .setup-toggle-btn:hover {
+    background: #18231d;
+}

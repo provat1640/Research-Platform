@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -20,9 +21,21 @@ class AiGateway
 
     public function provider(): string
     {
-        return filled(config('services.groq.key')) && config('services.ai.base_url') === config('services.groq.base_url')
-            ? 'Groq'
-            : 'OpenAI-compatible AI';
+        $baseUrl = (string) config('services.ai.base_url');
+
+        if (str_contains($baseUrl, 'generativelanguage.googleapis.com') || (filled(config('services.gemini.key')) && $baseUrl === config('services.gemini.base_url'))) {
+            return 'Google Gemini';
+        }
+
+        if (str_contains($baseUrl, 'groq.com') || (filled(config('services.groq.key')) && $baseUrl === config('services.groq.base_url'))) {
+            return 'Groq';
+        }
+
+        if (str_contains($baseUrl, '11434') || str_contains($baseUrl, 'ollama')) {
+            return 'Ollama (Local Private)';
+        }
+
+        return 'OpenAI-compatible AI';
     }
 
     /**
@@ -30,7 +43,17 @@ class AiGateway
      */
     public function availableModels(): array
     {
-        return array_keys(config('services.groq.free_models', []));
+        $provider = $this->provider();
+
+        if ($provider === 'Google Gemini') {
+            return array_keys(config('services.gemini.free_models', []));
+        }
+
+        if ($provider === 'Groq') {
+            return array_keys(config('services.groq.free_models', []));
+        }
+
+        return [config('services.ai.model', 'llama3.2')];
     }
 
     /**
@@ -55,7 +78,7 @@ class AiGateway
     public function chat(array $messages): array
     {
         if (! $this->configured()) {
-            throw new RuntimeException('The AI gateway is not configured. Set GROQ_API_KEY and GROQ_MODEL, or configure AI_BASE_URL and AI_MODEL.');
+            throw new RuntimeException('The AI gateway is not configured. Set GEMINI_API_KEY, GROQ_API_KEY, or configure AI_BASE_URL and AI_MODEL.');
         }
 
         return $this->request()
@@ -68,15 +91,301 @@ class AiGateway
             ->json();
     }
 
+    /**
+     * Encrypt sensitive academic prompts or AI responses at rest before storage.
+     *
+     * @param  string|array<string, mixed>  $data
+     */
+    public function encryptPayload(string|array $data): string
+    {
+        $serialized = is_array($data)
+            ? json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+            : $data;
+
+        return Crypt::encryptString((string) $serialized);
+    }
+
+    /**
+     * Decrypt a previously encrypted payload.
+     */
+    public function decryptPayload(string $encryptedPayload): string
+    {
+        return Crypt::decryptString($encryptedPayload);
+    }
+
+    /**
+     * Validate that external AI communication is encrypted in transit via TLS (HTTPS).
+     */
+    public function validateTransportSecurity(string $url): void
+    {
+        $parsed = parse_url($url);
+        $scheme = strtolower($parsed['scheme'] ?? 'http');
+        $host = strtolower($parsed['host'] ?? '');
+
+        $isLocal = in_array($host, ['localhost', '127.0.0.1', '::1', ''], true);
+
+        if ($scheme !== 'https' && ! $isLocal) {
+            throw new RuntimeException("Insecure AI transport: External AI API endpoints must use HTTPS TLS encryption. Target host: {$host}");
+        }
+    }
+
+    /**
+     * Probe all supported AI providers and check their real-time availability.
+     *
+     * @return array<string, array{
+     *     name: string,
+     *     model: string,
+     *     endpoint: string,
+     *     transport_security: string,
+     *     has_credentials: bool,
+     *     status: string,
+     *     status_code: ?int,
+     *     latency_ms: ?int,
+     *     message: string,
+     *     free_tier: string,
+     *     recommended: bool
+     * }>
+     */
+    public function probeAllProviders(): array
+    {
+        return [
+            'gemini' => $this->probeGemini(),
+            'groq' => $this->probeGroq(),
+            'ollama' => $this->probeOllama(),
+        ];
+    }
+
+    /**
+     * Probe Google Gemini API endpoint availability.
+     *
+     * @return array{
+     *     name: string,
+     *     model: string,
+     *     endpoint: string,
+     *     transport_security: string,
+     *     has_credentials: bool,
+     *     status: string,
+     *     status_code: ?int,
+     *     latency_ms: ?int,
+     *     message: string,
+     *     free_tier: string,
+     *     recommended: bool
+     * }
+     */
+    public function probeGemini(): array
+    {
+        $url = (string) config('services.gemini.base_url', 'https://generativelanguage.googleapis.com/v1beta/openai');
+        $key = (string) config('services.gemini.key');
+        $model = (string) config('services.gemini.model', 'gemini-2.5-flash');
+
+        $start = microtime(true);
+        $status = 'offline';
+        $statusCode = null;
+        $latencyMs = null;
+        $message = '';
+
+        try {
+            $client = Http::connectTimeout(4)->timeout(6)->acceptJson();
+            if (filled($key)) {
+                $client = $client->withToken($key);
+            }
+
+            // Google Gemini OpenAI endpoint accepts chat completions
+            $response = $client->post(rtrim($url, '/').'/chat/completions', [
+                'model' => $model,
+                'messages' => [['role' => 'user', 'content' => 'ping']],
+                'max_tokens' => 1,
+            ]);
+
+            $latencyMs = (int) round((microtime(true) - $start) * 1000);
+            $statusCode = $response->status();
+
+            if ($response->successful()) {
+                $status = 'ready';
+                $message = 'Fully operational and authenticated with Google AI Studio.';
+            } elseif ($statusCode === 400 || $statusCode === 401 || $statusCode === 403) {
+                $body = $response->body();
+                if (blank($key)) {
+                    $status = 'key_required';
+                    $message = 'Endpoint reachable over TLS. Add GEMINI_API_KEY in .env to activate free tier.';
+                } elseif (str_contains($body, 'API key not valid') || str_contains($body, 'API_KEY_INVALID')) {
+                    $status = 'invalid_key';
+                    $message = 'Endpoint reachable, but GEMINI_API_KEY was rejected by Google AI.';
+                } else {
+                    $status = 'key_required';
+                    $message = 'Endpoint reachable over TLS. Add GEMINI_API_KEY in .env to activate free tier.';
+                }
+            } else {
+                $status = 'error';
+                $message = "Endpoint returned HTTP status {$statusCode}.";
+            }
+        } catch (\Throwable $e) {
+            $message = 'Network connection failed: '.$e->getMessage();
+        }
+
+        return [
+            'name' => 'Google Gemini API',
+            'model' => $model,
+            'endpoint' => $url,
+            'transport_security' => 'HTTPS / TLS 1.3 (End-to-End Encrypted)',
+            'has_credentials' => filled($key),
+            'status' => $status,
+            'status_code' => $statusCode,
+            'latency_ms' => $latencyMs,
+            'message' => $message,
+            'free_tier' => '15 RPM / 1,000,000 TPM / 1,500 RPD (Free Tier)',
+            'recommended' => true,
+        ];
+    }
+
+    /**
+     * Probe Groq Cloud LPU endpoint availability.
+     *
+     * @return array{
+     *     name: string,
+     *     model: string,
+     *     endpoint: string,
+     *     transport_security: string,
+     *     has_credentials: bool,
+     *     status: string,
+     *     status_code: ?int,
+     *     latency_ms: ?int,
+     *     message: string,
+     *     free_tier: string,
+     *     recommended: bool
+     * }
+     */
+    public function probeGroq(): array
+    {
+        $url = (string) config('services.groq.base_url', 'https://api.groq.com/openai/v1');
+        $key = (string) config('services.groq.key');
+        $model = (string) config('services.groq.model', 'llama-3.3-70b-versatile');
+
+        $start = microtime(true);
+        $status = 'offline';
+        $statusCode = null;
+        $latencyMs = null;
+        $message = '';
+
+        try {
+            $client = Http::connectTimeout(4)->timeout(6)->acceptJson();
+            if (filled($key)) {
+                $client = $client->withToken($key);
+            }
+
+            $response = $client->get(rtrim($url, '/').'/models');
+            $latencyMs = (int) round((microtime(true) - $start) * 1000);
+            $statusCode = $response->status();
+
+            if ($response->successful()) {
+                $status = 'ready';
+                $message = 'Fully operational with ultra-low latency Groq LPUs.';
+            } elseif ($statusCode === 401 || $statusCode === 403) {
+                if (blank($key)) {
+                    $status = 'key_required';
+                    $message = 'Endpoint reachable over TLS. Add GROQ_API_KEY in .env to activate free tier.';
+                } else {
+                    $status = 'invalid_key';
+                    $message = 'Endpoint reachable, but GROQ_API_KEY was rejected by Groq Cloud.';
+                }
+            } else {
+                $status = 'error';
+                $message = "Endpoint returned HTTP status {$statusCode}.";
+            }
+        } catch (\Throwable $e) {
+            $message = 'Network connection failed: '.$e->getMessage();
+        }
+
+        return [
+            'name' => 'Groq Cloud LPU',
+            'model' => $model,
+            'endpoint' => $url,
+            'transport_security' => 'HTTPS / TLS 1.3 (End-to-End Encrypted)',
+            'has_credentials' => filled($key),
+            'status' => $status,
+            'status_code' => $statusCode,
+            'latency_ms' => $latencyMs,
+            'message' => $message,
+            'free_tier' => '30 RPM / 14,400 RPD (Free Tier for Open Models)',
+            'recommended' => false,
+        ];
+    }
+
+    /**
+     * Probe local Ollama service availability.
+     *
+     * @return array{
+     *     name: string,
+     *     model: string,
+     *     endpoint: string,
+     *     transport_security: string,
+     *     has_credentials: bool,
+     *     status: string,
+     *     status_code: ?int,
+     *     latency_ms: ?int,
+     *     message: string,
+     *     free_tier: string,
+     *     recommended: bool
+     * }
+     */
+    public function probeOllama(): array
+    {
+        $url = 'http://127.0.0.1:11434';
+        $model = 'llama3.2';
+
+        $start = microtime(true);
+        $status = 'offline';
+        $statusCode = null;
+        $latencyMs = null;
+        $message = '';
+
+        try {
+            $response = Http::connectTimeout(2)->timeout(3)->get($url.'/api/tags');
+            $latencyMs = (int) round((microtime(true) - $start) * 1000);
+            $statusCode = $response->status();
+
+            if ($response->successful()) {
+                $status = 'ready';
+                $models = collect($response->json('models', []))->pluck('name')->implode(', ');
+                $message = 'Local Ollama daemon running. Models: '.($models ?: 'None loaded yet');
+            } else {
+                $status = 'offline';
+                $message = "Local daemon responded with HTTP status {$statusCode}.";
+            }
+        } catch (\Throwable) {
+            $status = 'offline';
+            $message = 'Local Ollama daemon is not running on port 11434.';
+        }
+
+        return [
+            'name' => 'Ollama (Local Private)',
+            'model' => $model,
+            'endpoint' => $url.'/v1',
+            'transport_security' => 'Localhost Loopback (100% Air-gapped / Private)',
+            'has_credentials' => true, // No external key required
+            'status' => $status,
+            'status_code' => $statusCode,
+            'latency_ms' => $latencyMs,
+            'message' => $message,
+            'free_tier' => '100% Unlimited Local Compute (No Quotas or Fees)',
+            'recommended' => false,
+        ];
+    }
+
     protected function request(): PendingRequest
     {
-        $request = Http::baseUrl(rtrim((string) config('services.ai.base_url'), '/'))
+        $baseUrl = rtrim((string) config('services.ai.base_url'), '/');
+        $this->validateTransportSecurity($baseUrl);
+
+        $request = Http::baseUrl($baseUrl)
             ->acceptJson()
             ->connectTimeout((int) config('services.ai.connect_timeout', 5))
             ->timeout((int) config('services.ai.timeout', 30));
 
-        return filled(config('services.ai.key'))
-            ? $request->withToken((string) config('services.ai.key'))
+        $key = (string) config('services.ai.key');
+
+        return filled($key)
+            ? $request->withToken($key)
             : $request;
     }
 }

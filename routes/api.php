@@ -14,9 +14,11 @@ Route::prefix('v1')->middleware('auth')->group(function (): void {
     Route::get('/projects', [ResearchProjectController::class, 'index']);
     Route::post('/projects', [ResearchProjectController::class, 'store']);
     Route::get('/integrations/health', IntegrationHealthController::class);
+    Route::get('/ai/status', [AiController::class, 'status']);
     Route::middleware('project.member')->group(function (): void {
         Route::get('/projects/{project}', [ResearchProjectController::class, 'show']);
         Route::post('/projects/{project}/versions', [ResearchProjectController::class, 'storeVersion']);
+        Route::get('/projects/{project}/architecture/audit', [ResearchProjectController::class, 'auditArchitecture']);
         Route::patch('/projects/{project}/setup', [ResearchProjectController::class, 'updateSetup']);
         Route::patch('/projects/{project}/formatting', [ResearchProjectController::class, 'updateFormatting']);
         Route::post('/projects/{project}/presence', [ResearchProjectController::class, 'updatePresence']);

@@ -26,11 +26,17 @@ const aiAgents = document.querySelectorAll('[data-ai-agent]');
 
 const updateAiIdentity = (model = '') => {
     const normalizedModel = model.toLowerCase();
-    const identity = normalizedModel.includes('deepseek')
-        ? { key: 'deepseek', name: 'DeepSeek Reviewer' }
-        : normalizedModel.includes('qwen')
-            ? { key: 'qwen', name: 'Qwen Builder' }
-            : { key: 'llama', name: 'Llama Research Assistant' };
+    let identity = { key: 'gemini', name: 'Google Gemini 2.5 Flash' };
+
+    if (normalizedModel.includes('deepseek')) {
+        identity = { key: 'deepseek', name: 'DeepSeek Reviewer' };
+    } else if (normalizedModel.includes('qwen')) {
+        identity = { key: 'qwen', name: 'Qwen Builder' };
+    } else if (normalizedModel.includes('llama') || normalizedModel.includes('groq')) {
+        identity = { key: 'llama', name: 'Llama 3.3 (Groq)' };
+    } else if (normalizedModel.includes('gemini')) {
+        identity = { key: 'gemini', name: 'Google Gemini 2.5 Flash' };
+    }
 
     if (aiActiveIdentity) aiActiveIdentity.textContent = identity.name;
     aiAgents.forEach((agent) => agent.classList.toggle('is-active', agent.dataset.aiAgent === identity.key));
@@ -44,67 +50,119 @@ let currentCitations = [];
 let currentMedia = [];
 let latestKnownVersion = 0;
 
-// ================= 1. THEORY OF METHODOLOGY DEFINITIONS =================
+// ================= 1. COMPREHENSIVE THEORY OF METHODOLOGY DEFINITIONS =================
 const METHODOLOGY_THEORIES = {
     Qualitative: {
         paradigm: 'Interpretivism & Social Constructivism',
-        desc: 'Assumes reality is socially constructed through participant narratives, cultural context, and lived experience. Aims for deep inductive discovery rather than statistical testing.',
-        data: 'Semi-structured interviews, focus groups, field observation, grounded theory coding',
-        validation: 'Lincoln & Guba criteria: Credibility, Transferability, Dependability, Confirmability',
+        theorists: 'Egon Guba & Yvonna Lincoln (1985), John W. Creswell, Kathy Charmaz',
+        desc: 'Assumes reality is socially constructed through lived experiences, cultural contexts, and human interactions. Aims for deep inductive discovery rather than statistical reductionism.',
+        ontology: 'Relativist: Multiple subjective realities; researcher and participants are epistemologically intertwined.',
+        question: '"How or why does [phenomenon] occur within [social / organizational context]?"',
+        data: 'Semi-structured in-depth interviews, focus groups, field observation, grounded theory coding transcripts',
+        validation: 'Lincoln & Guba criteria: Credibility (member checking), Transferability (thick description), Dependability (audit trail), Confirmability (reflexivity)',
+        pitfalls: 'Treating qualitative themes as statistical frequencies; omission of reflexive researcher positionality statement.',
+        summary: 'Inductive, exploratory inquiry capturing nuanced participant perspectives without premature statistical constraints.',
     },
     Quantitative: {
         paradigm: 'Positivism & Post-Positivism (Empiricism)',
-        desc: 'Assumes an objective reality exists independently of human observation. Employs deductive hypothesis testing, operationalized variables, and inferential statistics to establish causality.',
-        data: 'Randomized controlled trials, structured surveys, telemetry instrumentation, regression analysis',
-        validation: 'Internal & External Validity, Statistical Significance (p-values), Construct Reliability',
+        theorists: 'Karl Popper (1959), Auguste Comte, Donald Campbell & Julian Stanley (1963)',
+        desc: 'Assumes an objective, measurable reality exists independently of human observation. Employs deductive hypothesis testing, operationalized variables, and inferential statistics to test causality.',
+        ontology: 'Realist / Critical Realist: Objective reality governed by natural laws and probabilistic relationships.',
+        question: '"What is the causal effect or significant relationship between Variable X and Variable Y, controlling for Z?"',
+        data: 'Randomized controlled trials, structured surveys (Likert), automated telemetry, regression analysis, ANOVA',
+        validation: 'Internal & External Validity, Statistical Significance (p < 0.05), Effect Size (Cohen\'s d), Construct Reliability (Cronbach\'s alpha > 0.70)',
+        pitfalls: 'Confusing correlation with causation; p-hacking or omitting statistical power analysis calculations.',
+        summary: 'Deductive, hypothesis-driven empirical study testing theoretical relationships through operationalized variables and statistical significance.',
     },
     'Mixed methods': {
-        paradigm: 'Pragmatism (John Dewey, C.S. Peirce)',
-        desc: 'Rejects methodological dogmatism: "Truth is what works in practice." Integrates quantitative breadth with qualitative contextual depth using triangulation and sequential explanatory frameworks.',
-        data: 'Convergent parallel datasets (e.g., broad quantitative survey + follow-up qualitative interviews)',
-        validation: 'Design fidelity, interpretive consistency, cross-methodological triangulation',
+        paradigm: 'Pragmatism (Pluralistic Epistemology)',
+        theorists: 'John Dewey (1938), Charles Sanders Peirce, Abbas Tashakkori & Charles Teddlie, John W. Creswell',
+        desc: 'Rejects methodological dogmatism: "Truth is what works in practice." Integrates quantitative breadth with qualitative contextual depth using triangulation and sequential designs.',
+        ontology: 'Pragmatic: Reality is both objective and socially experienced; value of truth lies in practical problem-solving.',
+        question: '"To what extent and in what ways does qualitative depth explain quantitative outcomes?"',
+        data: 'Convergent parallel datasets (e.g., broad quantitative survey + follow-up qualitative explanatory interviews)',
+        validation: 'Design fidelity, interpretive consistency, cross-methodological triangulation, dialectical integration',
+        pitfalls: 'Treating mixed methods as two unintegrated parallel studies without explicit synthesis.',
+        summary: 'Pluralistic research capitalizing on the complementary strengths of statistical generalizability and experiential depth.',
     },
     'Design science': {
-        paradigm: 'Sciences of the Artificial & Utility Theory (Hevner, Simon)',
-        desc: 'Generates prescriptive scientific knowledge through the design, demonstration, and empirical evaluation of innovative technological artifacts (software, architectures, algorithms).',
-        data: 'Functional prototypes, architectural blueprints, computational benchmarks, usability evaluations',
-        validation: 'Utility theory, artifact novelty, structural robustness, empirical benchmark superiority',
+        paradigm: 'Sciences of the Artificial & Utility Theory',
+        theorists: 'Herbert A. Simon (1969), Alan R. Hevner (2004), Ken Peffers (2007)',
+        desc: 'Generates prescriptive scientific knowledge through the design, demonstration, and empirical evaluation of innovative technological artifacts (software, architectures, algorithms) solving practical problems.',
+        ontology: 'Constructive Artificial: Reality includes human-made artifacts whose merit is judged by utility and efficacy.',
+        question: '"How can an innovative [Artifact / Architecture] be engineered to solve [Problem X] with superior utility?"',
+        data: 'Functional prototypes, architectural blueprints, computational latency benchmarks, usability evaluations',
+        validation: 'Hevner\'s Guidelines: Utility theory, artifact novelty, structural robustness, empirical benchmark superiority',
+        pitfalls: 'Building a system without rigorous formal evaluation or theoretical contribution.',
+        summary: 'Engineering research producing reusable prescriptive design principles and demonstrating measurable utility over baseline systems.',
     },
     'Literature review': {
         paradigm: 'Critical Realism & PRISMA Evidence Protocol',
+        theorists: 'David Moher et al. (PRISMA 2009/2020), Kitchenham & Charters (2007)',
         desc: 'Synthesizes cumulative scientific evidence without selection bias. Audits existing literature to map consensus, establish foundational baselines, and uncover unaddressed research frontiers.',
+        ontology: 'Cumulative Realist: Scientific knowledge is cumulative; systematic synthesis reveals the consensus and frontier of truth.',
+        question: '"What is the synthesized state of scientific evidence regarding [Topic], and where are the research gaps?"',
         data: 'Comprehensive database queries across IEEE Xplore, ACM DL, Scopus, PubMed, and Web of Science',
-        validation: 'PRISMA checklist, reproducible search strings, explicit inclusion/exclusion audit',
+        validation: 'PRISMA 27-item checklist, reproducible boolean query strings, explicit inclusion/exclusion audit',
+        pitfalls: 'Selective cherry-picking of articles; missing search strings or lack of quality appraisal scoring.',
+        summary: 'Exhaustive, unbiased, reproducible synthesis of peer-reviewed scientific literature establishing foundational benchmarks.',
     },
     'Action research': {
-        paradigm: 'Critical Social Theory & Participatory Inquiry (Kurt Lewin)',
+        paradigm: 'Critical Social Theory & Participatory Inquiry',
+        theorists: 'Kurt Lewin (1946), Stephen Kemmis & Robin McTaggart (1988), Peter Checkland',
         desc: 'Simultaneously solves real-world organizational challenges while advancing scholarly theory through collaborative, iterative cycles: Plan → Act → Observe → Reflect.',
-        data: 'Intervention logs, stakeholder debriefs, iterative process metrics, reflective journals',
-        validation: 'Recoverability of inquiry, catalytic validity, tangible stakeholder transformation',
+        ontology: 'Participatory / Constructivist: Social systems can only be understood through deliberate attempts to transform them.',
+        question: '"How can practitioners and researchers collaboratively intervene to transform [System X]?"',
+        data: 'Intervention sprint logs, stakeholder debriefs, iterative process metrics, reflective journals',
+        validation: 'Recoverability of inquiry, catalytic validity (stakeholder empowerment), cyclical reflection fidelity',
+        pitfalls: 'Devolving into standard corporate consulting without advancing generalizable scholarly theory.',
+        summary: 'Participatory, collaborative inquiry generating actionable practitioner solutions through recurring spirals of reflection.',
     },
 };
 
 const updateTheoryCard = (methodology) => {
     const card = document.querySelector('#theory-card');
-    const paradigm = document.querySelector('#theory-card-paradigm');
-    const desc = document.querySelector('#theory-card-desc');
-    const dataPill = document.querySelector('#theory-pill-data');
-    const valPill = document.querySelector('#theory-pill-validation');
-
-    if (!card || !paradigm || !desc) return;
+    if (!card) return;
 
     const theory = METHODOLOGY_THEORIES[methodology];
     if (theory) {
-        paradigm.textContent = theory.paradigm;
-        desc.textContent = theory.desc;
-        if (dataPill) dataPill.textContent = 'Data: ' + theory.data;
-        if (valPill) valPill.textContent = 'Rigor: ' + theory.validation;
+        card.innerHTML = `
+            <div class="theory-card-header">
+                <span class="theory-card-badge">${theory.paradigm}</span>
+                <span class="theory-card-badge" style="color: var(--teal);">${methodology}</span>
+            </div>
+            <p class="theory-theorists"><strong>Seminal Theorists:</strong> ${theory.theorists}</p>
+            <p class="theory-card-desc">${theory.desc}</p>
+            <div class="theory-grid-layout">
+                <div class="theory-grid-cell">
+                    <strong>Epistemological Stance & Ontology</strong>
+                    <span>${theory.ontology}</span>
+                </div>
+                <div class="theory-grid-cell">
+                    <strong>Core Question Format</strong>
+                    <span><em>${theory.question}</em></span>
+                </div>
+                <div class="theory-grid-cell">
+                    <strong>Data Collection & Evidence</strong>
+                    <span>${theory.data}</span>
+                </div>
+                <div class="theory-grid-cell">
+                    <strong>Rigor & Validation Criteria</strong>
+                    <span>${theory.validation}</span>
+                </div>
+            </div>
+            <div class="theory-formula-box">
+                <strong>Key Abstract Formula:</strong> ${theory.summary}
+            </div>
+        `;
         card.classList.add('has-selection');
     } else {
-        paradigm.textContent = 'Select a methodology';
-        desc.textContent = 'Selecting a methodology will display its theoretical premise, epistemological ground, and when to use it over alternative methods.';
-        if (dataPill) dataPill.textContent = 'Data type';
-        if (valPill) valPill.textContent = 'Rigor criteria';
+        card.innerHTML = `
+            <div class="theory-card-header">
+                <span class="theory-card-badge">Select a methodology</span>
+            </div>
+            <p class="theory-card-desc">Selecting a methodology will display its theoretical premise, seminal theorists, epistemological ground, and rigor criteria.</p>
+        `;
         card.classList.remove('has-selection');
     }
 };
@@ -130,6 +188,15 @@ const updateResearchFrame = (methodology) => {
 methodologySelect?.addEventListener('change', (e) => {
     updateTheoryCard(e.target.value);
     updateResearchFrame(e.target.value);
+});
+
+// Setup panel collapse toggle
+const setupPanel = document.querySelector('#stage-initialization');
+const toggleSetupBtn = document.querySelector('#toggle-setup-panel');
+toggleSetupBtn?.addEventListener('click', () => {
+    if (!setupPanel) return;
+    const isCollapsed = setupPanel.classList.toggle('is-collapsed');
+    toggleSetupBtn.textContent = isCollapsed ? 'Expand setup ↓' : 'Collapse setup ↑';
 });
 
 const architectureDetails = {
@@ -183,8 +250,8 @@ const runAiSummary = async (instruction, sourceButton = null) => {
         const content = payload.data.content || 'No response was returned.';
         if (aiResult) aiResult.textContent = content;
         if (aiLabOutput) aiLabOutput.textContent = content;
-        if (aiModelBadge) aiModelBadge.textContent = `${payload.data.provider || 'AI'} · ${payload.data.model || 'configured model'}`;
-        if (aiLabModel) aiLabModel.textContent = `${payload.data.provider || 'AI'} · ${payload.data.model || 'configured model'}`;
+        if (aiModelBadge) aiModelBadge.textContent = `${payload.data.provider || 'Google Gemini'} · ${payload.data.model || 'gemini-2.5-flash'} (Encrypted)`;
+        if (aiLabModel) aiLabModel.textContent = `${payload.data.provider || 'Google Gemini'} · ${payload.data.model || 'gemini-2.5-flash'}`;
         updateAiIdentity(payload.data.model || '');
     } catch (error) {
         if (aiResult) aiResult.textContent = error.message;
@@ -334,7 +401,134 @@ const PAPER_TEMPLATES = {
     `,
 };
 
-// ================= 3. WORKSPACE CORE LOADER =================
+// ================= 3. CORE ARCHITECTURE AUDIT & ENVIRONMENT LOADER =================
+const loadArchitectureAudit = async () => {
+    try {
+        const response = await fetch(`/api/v1/projects/${projectId}/architecture/audit`, {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) return;
+
+        const { data } = await response.json();
+        const globalStatus = document.querySelector('#arch-global-status');
+        if (globalStatus) {
+            globalStatus.textContent = data.architectural_integrity_passed ? 'PASS' : 'FAIL';
+            globalStatus.className = `arch-badge ${data.architectural_integrity_passed ? 'arch-pass' : 'arch-fail'}`;
+        }
+
+        const auditList = document.querySelector('#arch-audit-list');
+        if (auditList && data.structures) {
+            const s = data.structures;
+            auditList.innerHTML = `
+                <div class="arch-audit-item">
+                    <div><strong>Binary Tree</strong><small>Merkle Root (${s.binary_tree?.indexed_citations || 0} citations)</small></div>
+                    <span class="arch-badge arch-pass">Root: ${(s.binary_tree?.merkle_root || 'Calculated').slice(0, 8)}…</span>
+                </div>
+                <div class="arch-audit-item">
+                    <div><strong>Recursion</strong><small>Depth Guard (${s.recursion?.total_nodes || 0} nodes / depth ${s.recursion?.max_observed_depth || 1})</small></div>
+                    <span class="arch-badge ${s.recursion?.outline_valid ? 'arch-pass' : 'arch-fail'}">${s.recursion?.outline_valid ? 'Verified' : 'Invalid'}</span>
+                </div>
+                <div class="arch-audit-item">
+                    <div><strong>Graph Mapping</strong><small>DAG Structure (${s.graph_mapping?.nodes || 0} nodes)</small></div>
+                    <span class="arch-badge ${!s.graph_mapping?.has_cycles ? 'arch-pass' : 'arch-fail'}">${!s.graph_mapping?.has_cycles ? 'Cycle-Free' : 'Cycle Detected'}</span>
+                </div>
+                <div class="arch-audit-item">
+                    <div><strong>Linked List</strong><small>Tamper-Evident Ledger (${s.linked_list?.node_count || 0} versions)</small></div>
+                    <span class="arch-badge ${s.linked_list?.chain_valid ? 'arch-pass' : 'arch-fail'}">${s.linked_list?.chain_valid ? 'Verified' : 'Broken'}</span>
+                </div>
+                <div class="arch-audit-item">
+                    <div><strong>Linear Search</strong><small>Sequential Audit Scan (${s.linear_search?.urgent_unresolved_tasks_count || 0} urgent items)</small></div>
+                    <span class="arch-badge arch-pass">Scanned</span>
+                </div>
+                <div class="arch-audit-item">
+                    <div><strong>Cryptographic Hash</strong><small>SHA-256 HMAC State Seal</small></div>
+                    <span class="arch-badge arch-pass">Sealed: ${(s.hash_integrity?.hash || '').slice(0, 8)}…</span>
+                </div>
+            `;
+        }
+    } catch (e) {
+        console.error('Architecture audit load error:', e);
+    }
+};
+
+const loadEnvironmentHealth = async () => {
+    try {
+        const response = await fetch('/api/v1/integrations/health', {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) return;
+
+        const { data } = await response.json();
+        const env = data.environment || {};
+
+        const activeDirEl = document.querySelector('#env-active-directory');
+        const storageEl = document.querySelector('#env-storage-path');
+        const dbDriverEl = document.querySelector('#env-db-driver');
+        const aiProviderEl = document.querySelector('#env-ai-provider');
+        const aiModelEl = document.querySelector('#env-ai-model');
+
+        if (activeDirEl && env.active_directory) activeDirEl.textContent = env.active_directory;
+        if (storageEl && env.public_storage_path) storageEl.textContent = `${env.public_storage_path} (${env.storage_linked ? 'Linked' : 'Not Linked'})`;
+        if (dbDriverEl && env.database_driver) dbDriverEl.textContent = `${env.database_driver} (Relational)`;
+        if (aiProviderEl && env.ai_provider) aiProviderEl.textContent = env.ai_provider;
+        if (aiModelEl && env.ai_model) aiModelEl.textContent = env.ai_model;
+    } catch (e) {
+        console.error('Environment health load error:', e);
+    }
+};
+
+const loadAiAvailability = async () => {
+    const btn = document.querySelector('#btn-refresh-ai-status');
+    if (btn) btn.textContent = '…';
+    try {
+        const response = await fetch('/api/v1/ai/status', {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) return;
+
+        const { data } = await response.json();
+        const providers = data.providers || {};
+
+        const updateStatusBadge = (id, provider) => {
+            const el = document.querySelector(id);
+            if (!el || !provider) return;
+
+            if (provider.status === 'ready') {
+                el.className = 'arch-badge arch-pass';
+                el.textContent = 'ONLINE';
+                el.title = `${provider.name} ready (${provider.latency_ms || 0}ms)`;
+            } else if (provider.status === 'key_required') {
+                el.className = 'arch-badge arch-warn';
+                el.textContent = 'REACHABLE (Key Req)';
+                el.title = provider.message;
+            } else if (provider.status === 'invalid_key') {
+                el.className = 'arch-badge arch-fail';
+                el.textContent = 'KEY INVALID';
+                el.title = provider.message;
+            } else {
+                el.className = 'arch-badge';
+                el.style.background = 'var(--line)';
+                el.textContent = 'OFFLINE';
+                el.title = provider.message;
+            }
+        };
+
+        updateStatusBadge('#status-gemini', providers.gemini);
+        updateStatusBadge('#status-groq', providers.groq);
+        updateStatusBadge('#status-ollama', providers.ollama);
+
+        const aiModelBadge = document.querySelector('#ai-model-badge');
+        if (aiModelBadge && data.active_provider && data.active_model) {
+            aiModelBadge.textContent = `${data.active_provider} · ${data.active_model} (Free Tier)`;
+        }
+    } catch (e) {
+        console.error('AI availability check error:', e);
+    } finally {
+        if (btn) btn.textContent = '↻ Check';
+    }
+};
+
+// ================= 4. WORKSPACE CORE LOADER =================
 const loadWorkspace = async () => {
     try {
         const [projectResponse, taskResponse, feedbackResponse, citationsResponse, mediaResponse] = await Promise.all([
@@ -417,12 +611,15 @@ const loadWorkspace = async () => {
         }
 
         updateManuscriptStats();
+        loadArchitectureAudit();
+        loadEnvironmentHealth();
+        loadAiAvailability();
     } catch (err) {
         console.error('Workspace load error:', err);
     }
 };
 
-// ================= 4. COLLABORATION (INDIVIDUAL & 2/3 GROUP) =================
+// ================= 5. COLLABORATION (INDIVIDUAL & 2/3 GROUP) =================
 const renderMembers = (members) => {
     if (!memberList) return;
     const roleColors = {
@@ -479,7 +676,7 @@ setInterval(async () => {
     } catch (_) {}
 }, 15000);
 
-// ================= 5. PAPER MARGINS, LAYOUT & TYPOGRAPHY =================
+// ================= 6. PAPER MARGINS, LAYOUT & TYPOGRAPHY =================
 const applyFormattingClasses = (formatting) => {
     const body = document.body;
 
@@ -550,7 +747,7 @@ const saveFormatting = async (partial) => {
     }
 };
 
-// ================= 6. CITATIONS & BIBLIOGRAPHY =================
+// ================= 7. CITATIONS & BIBLIOGRAPHY =================
 const renderCitations = (citations) => {
     if (!citationList) return;
     citationList.innerHTML = citations.length
@@ -623,7 +820,7 @@ const appendBibliographyToPaper = () => {
     saveState.textContent = 'Bibliography appended to paper';
 };
 
-// ================= 7. MEDIA & FIGURES =================
+// ================= 8. MEDIA & FIGURES =================
 const renderMedia = (media) => {
     if (!mediaList) return;
     mediaList.innerHTML = media.length
@@ -647,54 +844,49 @@ const insertFigureIntoEditor = (mediaItem) => {
     const figureHtml = `
         <figure class="paper-figure" contenteditable="false" data-media-id="${mediaItem.id}">
             <img src="${mediaItem.file_path}" alt="${mediaItem.title}" style="max-width: 100%;">
-            <figcaption>
-                <strong class="fig-num">Figure ${mediaItem.figure_number}:</strong> ${mediaItem.caption || mediaItem.title}
-            </figcaption>
+            <figcaption><strong class="fig-num">Figure ${mediaItem.figure_number}:</strong> ${mediaItem.title}. ${mediaItem.caption || ''}</figcaption>
         </figure>
-        <p></p>
     `;
     document.execCommand('insertHTML', false, figureHtml);
     document.querySelector('#media-dialog')?.close();
-    saveState.textContent = 'Figure inserted into manuscript';
 };
 
-// ================= 8. EVENT HANDLERS & LISTENERS =================
+// ================= 9. EVENT LISTENERS & CONTROLS =================
 
-// Format text buttons
+// Rich Text Formatting Buttons
 document.querySelectorAll('[data-command]').forEach((button) => {
     button.addEventListener('click', () => {
-        editor.focus();
         document.execCommand(button.dataset.command, false, null);
+        editor.focus();
     });
 });
 
 document.querySelectorAll('[data-format-block]').forEach((button) => {
     button.addEventListener('click', () => {
-        editor.focus();
         document.execCommand('formatBlock', false, `<${button.dataset.formatBlock}>`);
+        editor.focus();
     });
 });
 
-// Layout switcher (Full Studio, Focus Mode, Review Split)
+// Layout Switcher (Studio, Focus, Review)
 document.querySelectorAll('[data-layout-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('[data-layout-mode]').forEach((b) => b.classList.remove('is-active'));
         btn.classList.add('is-active');
 
-        const mode = btn.dataset.layoutMode;
         document.body.classList.remove('layout-full', 'layout-focus', 'layout-review');
-        document.body.classList.add(`layout-${mode}`);
+        document.body.classList.add(`layout-${btn.dataset.layoutMode}`);
     });
 });
 
-// Theme switcher
+// Color Palette Theme Switcher (White, Sepia, Dark)
 document.querySelectorAll('[data-theme-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
         saveFormatting({ active_theme: btn.dataset.themeMode });
     });
 });
 
-// Paper layout strip buttons
+// Paper Format Strip Buttons
 document.querySelector('#margin-buttons')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-margin]');
     if (btn) saveFormatting({ paper_margin: btn.dataset.margin });
@@ -727,7 +919,20 @@ document.querySelectorAll('[data-sidebar-tab]').forEach((tabBtn) => {
     });
 });
 
+// Guide Modal Tab Switching
+document.querySelectorAll('.guide-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.guide-tab-btn').forEach((b) => b.classList.remove('is-active'));
+        document.querySelectorAll('.guide-tab-pane').forEach((p) => p.classList.remove('is-active'));
+
+        btn.classList.add('is-active');
+        const targetId = btn.dataset.guideTarget;
+        document.getElementById(targetId)?.classList.add('is-active');
+    });
+});
+
 // Modals Trigger Handlers
+document.querySelector('#open-instructions-guide')?.addEventListener('click', () => document.querySelector('#instructions-dialog')?.showModal());
 document.querySelector('#trigger-theory-modal')?.addEventListener('click', () => document.querySelector('#theory-dialog')?.showModal());
 document.querySelector('#open-theory-guide')?.addEventListener('click', () => document.querySelector('#theory-dialog')?.showModal());
 document.querySelector('#btn-open-templates')?.addEventListener('click', () => document.querySelector('#template-dialog')?.showModal());
@@ -739,139 +944,129 @@ document.querySelector('#btn-add-citation')?.addEventListener('click', () => {
     document.querySelector('#btn-cite-mode-new')?.click();
 });
 document.querySelector('#btn-invite-member')?.addEventListener('click', () => document.querySelector('#member-dialog')?.showModal());
+document.querySelector('#btn-run-arch-audit')?.addEventListener('click', () => loadArchitectureAudit());
+document.querySelector('#trigger-arch-audit')?.addEventListener('click', () => {
+    document.querySelector('[data-sidebar-tab="directory"]')?.click();
+    loadArchitectureAudit();
+});
 
-// Close Dialog buttons
+// Close Dialogs
 document.querySelectorAll('[data-close-dialog]').forEach((btn) => {
     btn.addEventListener('click', () => {
-        document.getElementById(btn.dataset.closeDialog)?.close();
+        document.querySelector(`#${btn.dataset.closeDialog}`)?.close();
     });
 });
 
-// Apply methodology from theory table
-document.addEventListener('click', (e) => {
-    const applyMethodBtn = e.target.closest('[data-apply-method]');
-    if (applyMethodBtn) {
-        const method = applyMethodBtn.dataset.applyMethod;
+// Format panel toggle
+document.querySelector('#open-format-panel')?.addEventListener('click', () => {
+    const strip = document.querySelector('#paper-layout-strip');
+    if (strip) strip.classList.toggle('is-hidden');
+});
+
+// Print / PDF Button
+document.querySelector('#print-paper')?.addEventListener('click', () => {
+    window.print();
+});
+
+// Apply Template
+document.querySelectorAll('[data-template-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        const templateHtml = PAPER_TEMPLATES[btn.dataset.templateId];
+        if (templateHtml) {
+            if (confirm('Apply this research template? This will set up the outline structure in your manuscript.')) {
+                editor.innerHTML = templateHtml;
+                document.querySelector('#template-dialog')?.close();
+                saveState.textContent = 'Template outline applied';
+                updateManuscriptStats();
+            }
+        }
+    });
+});
+
+// Apply Methodology from Modal
+document.querySelectorAll('[data-apply-method]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        const method = btn.dataset.applyMethod;
         if (methodologySelect) {
             methodologySelect.value = method;
             updateTheoryCard(method);
+            updateResearchFrame(method);
+            document.querySelector('#theory-dialog')?.close();
+            document.querySelector('#instructions-dialog')?.close();
+            saveState.textContent = `Applied ${method} methodology stance`;
         }
-        document.querySelector('#theory-dialog')?.close();
-        setupForm?.dispatchEvent(new Event('submit', { cancelable: true }));
-    }
+    });
 });
 
-// Apply research paper template
+// Citation Dialog Modes
+const btnCiteModeExisting = document.querySelector('#btn-cite-mode-existing');
+const btnCiteModeNew = document.querySelector('#btn-cite-mode-new');
+const existingCitationsContainer = document.querySelector('#existing-citations-container');
+const citationForm = document.querySelector('#citation-form');
+
+btnCiteModeExisting?.addEventListener('click', () => {
+    btnCiteModeExisting.classList.add('is-active');
+    btnCiteModeNew.classList.remove('is-active');
+    existingCitationsContainer.style.display = 'block';
+    citationForm.style.display = 'none';
+});
+
+btnCiteModeNew?.addEventListener('click', () => {
+    btnCiteModeNew.classList.add('is-active');
+    btnCiteModeExisting.classList.remove('is-active');
+    existingCitationsContainer.style.display = 'none';
+    citationForm.style.display = 'block';
+});
+
+// Insert citation tag listener
 document.addEventListener('click', (e) => {
-    const tplBtn = e.target.closest('[data-template-id]');
-    if (tplBtn) {
-        const templateKey = tplBtn.dataset.templateId;
-        const templateHtml = PAPER_TEMPLATES[templateKey];
-        if (templateHtml) {
-            if (editor.textContent.trim().length > 150) {
-                if (!confirm('Applying this template will insert its sections into your manuscript. Proceed?')) return;
-            }
-            editor.innerHTML = templateHtml;
-            document.querySelector('#template-dialog')?.close();
-            saveState.textContent = 'Template applied to editor';
-            updateManuscriptStats();
+    const insertCitationBtn = e.target.closest('[data-insert-citation-tag]');
+    if (insertCitationBtn) {
+        insertInTextCitation(insertCitationBtn.dataset.insertCitationTag, insertCitationBtn.dataset.citeKey);
+    }
+
+    const insertFigureBtn = e.target.closest('[data-insert-figure-id]');
+    if (insertFigureBtn) {
+        const mediaItem = currentMedia.find((m) => m.id == insertFigureBtn.dataset.insertFigureId);
+        if (mediaItem) insertFigureIntoEditor(mediaItem);
+    }
+
+    const restoreVersionBtn = e.target.closest('[data-restore-version]');
+    if (restoreVersionBtn) {
+        if (confirm('Restore this document version? Current unsaved edits will be replaced.')) {
+            fetch(`/api/v1/projects/${projectId}`)
+                .then((r) => r.json())
+                .then(({ data }) => {
+                    if (data.latest_version && data.latest_version.content.html) {
+                        editor.innerHTML = data.latest_version.content.html;
+                        saveState.textContent = `Restored version ${data.latest_version.version_number}`;
+                        updateManuscriptStats();
+                    }
+                });
         }
     }
 });
 
-// Citation insertion
-document.addEventListener('click', (e) => {
-    const insertBtn = e.target.closest('[data-insert-citation-tag]');
-    if (insertBtn) {
-        insertInTextCitation(insertBtn.dataset.insertCitationTag, insertBtn.dataset.citeKey);
-    }
-
-    const figureBtn = e.target.closest('[data-insert-figure-id]');
-    if (figureBtn) {
-        const mediaId = Number(figureBtn.dataset.insertFigureId);
-        const item = currentMedia.find((m) => m.id === mediaId);
-        if (item) insertFigureIntoEditor(item);
-    }
-});
-
+// Generate References
 document.querySelector('#btn-append-bibliography')?.addEventListener('click', appendBibliographyToPaper);
 document.querySelector('#btn-generate-references-action')?.addEventListener('click', appendBibliographyToPaper);
 
-// Print / PDF Export
-document.querySelector('#print-paper')?.addEventListener('click', () => window.print());
-
-// Save version
-document.querySelector('#save-version')?.addEventListener('click', async () => {
-    saveState.textContent = 'Saving version…';
-    try {
-        const response = await fetch(`/api/v1/projects/${projectId}/versions`, {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            },
-            body: JSON.stringify({ content: { html: editor.innerHTML } }),
-        });
-        if (!response.ok) throw new Error('Save failed');
-        const { data } = await response.json();
-        versionLabel.textContent = `Version ${data.version_number}`;
-        saveState.textContent = 'All changes saved';
-        versionHistory?.insertAdjacentHTML(
-            'afterbegin',
-            `<div class="version-row">
-                <div>
-                    <strong>Version ${data.version_number}</strong>
-                    <small>Just now · ${data.author}</small>
-                </div>
-                <button type="button" class="button button-quiet button-sm" data-restore-version="${data.id}">Restore</button>
-            </div>`
-        );
-    } catch (e) {
-        saveState.textContent = 'Could not save version';
-    }
-});
-
-// Version Restore
-document.addEventListener('click', (e) => {
-    const restoreBtn = e.target.closest('[data-restore-version]');
-    if (restoreBtn) {
-        if (confirm('Restore this saved manuscript draft? Current unversioned changes will be replaced.')) {
-            loadWorkspace();
-        }
-    }
-});
-
-// Citation dialog mode toggle
-document.querySelector('#btn-cite-mode-existing')?.addEventListener('click', () => {
-    document.querySelector('#btn-cite-mode-existing').classList.add('is-active');
-    document.querySelector('#btn-cite-mode-new').classList.remove('is-active');
-    document.querySelector('#existing-citations-container').style.display = 'block';
-    document.querySelector('#citation-form').style.display = 'none';
-});
-
-document.querySelector('#btn-cite-mode-new')?.addEventListener('click', () => {
-    document.querySelector('#btn-cite-mode-new').classList.add('is-active');
-    document.querySelector('#btn-cite-mode-existing').classList.remove('is-active');
-    document.querySelector('#existing-citations-container').style.display = 'none';
-    document.querySelector('#citation-form').style.display = 'block';
-});
-
-// Media Form - URL vs File toggle
+// Media Form Source Type Toggle (URL vs File)
 document.querySelectorAll('input[name="media_source_type"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-        const isUrl = radio.value === 'url';
-        document.querySelector('#media-url-field').style.display = isUrl ? 'block' : 'none';
-        document.querySelector('#media-file-field').style.display = isUrl ? 'none' : 'block';
+    radio.addEventListener('change', (e) => {
+        const isFile = e.target.value === 'file';
+        document.querySelector('#media-file-field').style.display = isFile ? 'block' : 'none';
+        document.querySelector('#media-url-field').style.display = isFile ? 'none' : 'block';
     });
 });
 
 // Media Form Submit
 document.querySelector('#media-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
     const errorEl = document.querySelector('#media-form-error');
     errorEl.textContent = '';
-    const formData = new FormData(e.target);
 
     try {
         const response = await fetch(`/api/v1/projects/${projectId}/media`, {
@@ -883,28 +1078,27 @@ document.querySelector('#media-form')?.addEventListener('submit', async (e) => {
             body: formData,
         });
 
+        const payload = await response.json();
         if (!response.ok) {
-            const err = await response.json();
-            errorEl.textContent = err.message || 'Unable to upload media figure.';
-            return;
+            throw new Error(payload.message || 'Failed to upload figure');
         }
 
-        const { data } = await response.json();
-        currentMedia.unshift(data);
-        renderMedia(currentMedia);
-        insertFigureIntoEditor(data);
-        e.target.reset();
+        form.reset();
+        document.querySelector('#media-dialog')?.close();
+        await loadWorkspace();
+        insertFigureIntoEditor(payload.data);
     } catch (err) {
-        errorEl.textContent = 'Server connection error.';
+        errorEl.textContent = err.message;
     }
 });
 
 // Citation Form Submit
 document.querySelector('#citation-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
     const errorEl = document.querySelector('#citation-form-error');
     errorEl.textContent = '';
-    const bodyData = Object.fromEntries(new FormData(e.target));
 
     try {
         const response = await fetch(`/api/v1/projects/${projectId}/citations`, {
@@ -914,31 +1108,30 @@ document.querySelector('#citation-form')?.addEventListener('submit', async (e) =
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             },
-            body: JSON.stringify(bodyData),
+            body: JSON.stringify(Object.fromEntries(formData)),
         });
 
+        const payload = await response.json();
         if (!response.ok) {
-            const err = await response.json();
-            errorEl.textContent = err.message || 'Unable to save citation.';
-            return;
+            throw new Error(payload.message || 'Failed to save citation');
         }
 
-        const { data } = await response.json();
-        currentCitations.push(data);
-        renderCitations(currentCitations);
-        insertInTextCitation(data.in_text_tag, data.key);
-        e.target.reset();
+        form.reset();
+        document.querySelector('#citation-dialog')?.close();
+        await loadWorkspace();
+        insertInTextCitation(payload.data.in_text_tag, payload.data.key);
     } catch (err) {
-        errorEl.textContent = 'Server connection error.';
+        errorEl.textContent = err.message;
     }
 });
 
-// Member Form Submit (Collaboration)
+// Invite Member Form Submit
 document.querySelector('#member-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
     const errorEl = document.querySelector('#member-form-error');
     errorEl.textContent = '';
-    const bodyData = Object.fromEntries(new FormData(e.target));
 
     try {
         const response = await fetch(`/api/v1/projects/${projectId}/members`, {
@@ -948,26 +1141,29 @@ document.querySelector('#member-form')?.addEventListener('submit', async (e) => 
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             },
-            body: JSON.stringify(bodyData),
+            body: JSON.stringify(Object.fromEntries(formData)),
         });
 
+        const payload = await response.json();
         if (!response.ok) {
-            const err = await response.json();
-            errorEl.textContent = err.message || 'Unable to add collaborator.';
-            return;
+            throw new Error(payload.message || 'Failed to add collaborator');
         }
 
+        form.reset();
         document.querySelector('#member-dialog')?.close();
-        e.target.reset();
         await loadWorkspace();
     } catch (err) {
-        errorEl.textContent = 'Server connection error.';
+        errorEl.textContent = err.message;
     }
 });
 
 // Task Form Submit
 document.querySelector('#task-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const titleInput = form.elements.title;
+    if (!titleInput.value.trim()) return;
+
     await fetch(`/api/v1/projects/${projectId}/tasks`, {
         method: 'POST',
         headers: {
@@ -975,15 +1171,20 @@ document.querySelector('#task-form')?.addEventListener('submit', async (e) => {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
         },
-        body: JSON.stringify(Object.fromEntries(new FormData(e.target))),
+        body: JSON.stringify({ title: titleInput.value.trim(), priority: 'normal' }),
     });
-    e.target.reset();
+
+    titleInput.value = '';
     await loadWorkspace();
 });
 
 // Feedback Form Submit
 document.querySelector('#feedback-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const bodyInput = form.elements.body;
+    if (!bodyInput.value.trim()) return;
+
     await fetch(`/api/v1/projects/${projectId}/feedback`, {
         method: 'POST',
         headers: {
@@ -991,10 +1192,42 @@ document.querySelector('#feedback-form')?.addEventListener('submit', async (e) =
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
         },
-        body: JSON.stringify(Object.fromEntries(new FormData(e.target))),
+        body: JSON.stringify({ body: bodyInput.value.trim() }),
     });
-    e.target.reset();
+
+    bodyInput.value = '';
     await loadWorkspace();
+});
+
+// Save Version Button
+document.querySelector('#save-version')?.addEventListener('click', async () => {
+    saveState.textContent = 'Saving version…';
+    const content = {
+        html: editor.innerHTML,
+        text: editor.innerText,
+        words: (editor.innerText || '').trim().split(/\s+/).filter(Boolean).length,
+    };
+
+    try {
+        const response = await fetch(`/api/v1/projects/${projectId}/versions`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ content }),
+        });
+
+        if (response.ok) {
+            saveState.textContent = 'All changes saved';
+            await loadWorkspace();
+        } else {
+            saveState.textContent = 'Error saving version';
+        }
+    } catch (err) {
+        saveState.textContent = 'Failed to save version';
+    }
 });
 
 // Setup Form Submit
@@ -1114,6 +1347,7 @@ const filterCitations = (query) => {
 
 document.querySelector('#citation-search')?.addEventListener('input', (e) => filterCitations(e.target.value));
 document.querySelector('#modal-citation-search')?.addEventListener('input', (e) => filterCitations(e.target.value));
+document.querySelector('#btn-refresh-ai-status')?.addEventListener('click', () => loadAiAvailability());
 
 // Initial Load
 loadWorkspace();
